@@ -111,5 +111,8 @@
     "@decaf-ts/injectable-decorators": "latest",
     "@decaf-ts/reflection": "latest",
     "reflect-metadata": "^0.2.1"
+  },
+  "dependencies": {
+    "nano": "^10.1.4"
   }
 }

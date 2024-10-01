@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   replica-0:
-    image: registry.pdmfc.com/aeon/aeon-toolkit:couchdb-${COUCHDB_VERSION:-latest}
+    image: ghcr.io/decaf-ts/couchdb:latest
     hostname: replica-0
     container_name: replica-0
     restart: always
@@ -27,7 +27,7 @@ services:
       timeout: 3s
       retries: 10
   replica-1:
-    image: registry.pdmfc.com/aeon/aeon-toolkit:couchdb-${COUCHDB_VERSION:-latest}
+    image: ghcr.io/decaf-ts/couchdb:latest
     hostname: replica-1
     container_name: replica-1
     restart: always
@@ -52,7 +52,7 @@ services:
       timeout: 3s
       retries: 10
   replica-2:
-    image: registry.pdmfc.com/aeon/aeon-toolkit:couchdb-${COUCHDB_VERSION:-latest}
+    image: ghcr.io/decaf-ts/couchdb:latest
     hostname: replica-2
     container_name: replica-2
     restart: always
