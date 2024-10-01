@@ -1,0 +1,4 @@
+FROM couchdb:${COUCHDB_VERSION:-latest}
+COPY couchdb.ini /opt/couchdb/etc/default.ini
+
+LABEL name="Replication CouchDB" description="CORS enabled couchdb image"

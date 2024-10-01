@@ -1,0 +1,19 @@
+FROM alpine:latest
+
+RUN apk update
+RUN apk upgrade
+RUN apk add --update bash curl
+
+ENV WORKING_DIR=cluster-boot
+
+RUN mkdir ${WORKING_DIR}
+
+COPY .env $WORKING_DIR/.env
+COPY init-cluster.sh $WORKING_DIR/boot.sh
+
+WORKDIR $WORKING_DIR
+
+LABEL name="CouchDB Cluster Booter" version="stable" description="Single run container to set up the initial databases and set up the cluster environment"
+
+ENTRYPOINT ["/bin/bash", "-c", "./boot.sh"]
+
