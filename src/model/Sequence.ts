@@ -1,5 +1,5 @@
 import { model, ModelArg, required } from "@decaf-ts/decorator-validation";
-import { index } from "@decaf-ts/db-decorators";
+import { BaseModel, pk, index } from "@decaf-ts/core";
 
 @model()
 export class Sequence extends BaseModel {
@@ -23,6 +23,6 @@ export class Sequence extends BaseModel {
   current?: string | number = "0";
 
   constructor(seq?: ModelArg<Sequence>) {
-    super(seq);
+    super(seq as any);
   }
 }

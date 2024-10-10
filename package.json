@@ -16,7 +16,7 @@
     "build": "rimraf ./lib && rimraf ./dist && gulp dev",
     "build:prod": "rimraf ./lib && rimraf ./dist && gulp prod",
     "test": "jest --coverage --testPathPattern=\"/tests/unit\" --passWithNoTests --detectOpenHandles",
-    "test:integration": "jest --coverage --testPathPattern=\"/tests/(integration)\" --passWithNoTests --detectOpenHandles",
+    "test:integration": "jest --coverage --testPathPattern=\"/tests/(integration)\" --passWithNoTests --detectOpenHandles --globalSetup=./tests/integration/setup.ts --globalTeardown=./tests/integration/teardown.ts",
     "test:all": "jest --coverage --testPathPattern=\"/tests/(unit|integration)\" --passWithNoTests --detectOpenHandles",
     "lint": "eslint .",
     "lint-fix": "eslint --fix ./src/*",
@@ -110,9 +110,10 @@
     "@decaf-ts/decorator-validation": "latest",
     "@decaf-ts/injectable-decorators": "latest",
     "@decaf-ts/reflection": "latest",
-    "reflect-metadata": "^0.2.1"
-  },
-  "dependencies": {
-    "nano": "^10.1.4"
+    "https-browserify": "^1.0.0",
+    "nano": "^10.1.4",
+    "reflect-metadata": "^0.2.1",
+    "stream-http": "^3.2.0",
+    "url": "^0.11.4"
   }
 }

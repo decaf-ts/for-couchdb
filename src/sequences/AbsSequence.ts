@@ -1,14 +1,14 @@
-import { Sequence } from "../interfaces/Sequence";
 import { Constructor, sf } from "@decaf-ts/decorator-validation";
-import { SequenceOptions } from "../interfaces/SequenceOptions";
 import { Sequence as Seq } from "../model/Sequence";
 import {
   DBModel,
   InternalError,
   IRepository,
   NotFoundError,
-  repository,
 } from "@decaf-ts/db-decorators";
+import { repository } from "@decaf-ts/core";
+import { SequenceOptions } from "@decaf-ts/core";
+import { Sequence } from "@decaf-ts/core";
 
 /**
  * @summary Abstract implementation of a Sequence
@@ -28,7 +28,7 @@ export abstract class AbsSequence<
   V extends SequenceOptions = SequenceOptions,
 > implements Sequence
 {
-  @repository(Seq)
+  // @repository(Seq)
   protected sequenceManager!: IRepository<Seq>;
 
   private readonly defaultOptions: V = {

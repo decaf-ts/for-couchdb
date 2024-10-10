@@ -65,6 +65,8 @@ function getWebpackConfig(isESM, isDev) {
         resolve: {
             extensions: ['.ts', '.js'],
             fallback: {
+                "http": false,
+                "https": false,
                 "path": false,
                 "fs": false,
                 "stream": false,
