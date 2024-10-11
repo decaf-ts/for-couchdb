@@ -1,10 +1,10 @@
 import {CouchDBAdapter} from "../../src/adapter";
 import {ServerScope} from "nano";
-import {Repository} from "@decaf-ts/core";
+import {PersistenceKeys, Repository} from "@decaf-ts/core";
 import {Model} from "@decaf-ts/decorator-validation";
 import {TestModel} from "../TestModel";
 import {wrapDocumentScope} from "../../src";
-import {ConflictError} from "@decaf-ts/db-decorators";
+import {ConflictError, NotFoundError} from "@decaf-ts/db-decorators";
 
 const admin="couchdb.admin";
 const admin_password="couchdb.admin";
@@ -37,11 +37,11 @@ describe("Adapter Integration", () => {
   })
 
   afterAll(async () => {
-    await CouchDBAdapter.deleteDatabase(con, dbName);
+    // await CouchDBAdapter.deleteDatabase(con, dbName);
   })
 
 
-  let created: TestModel;
+  let created: TestModel, updated: TestModel;
 
   it("creates", async () => {
     const model = new TestModel({
@@ -53,6 +53,8 @@ describe("Adapter Integration", () => {
     created = await repo.create(model);
 
     expect(created).toBeDefined();
+    const metadata = (created as any)[PersistenceKeys.METADATA]
+    expect(metadata).toBeDefined();
   })
 
   it("reads", async () => {
@@ -62,6 +64,8 @@ describe("Adapter Integration", () => {
     expect(read).toBeDefined();
     expect(read.equals(created)).toEqual(true); // same model
     expect(read === created).toEqual(false); // different instances
+    const metadata = (read as any)[PersistenceKeys.METADATA]
+    expect(metadata).toBeDefined();
   })
 
   it("updates", async () => {
@@ -70,10 +74,23 @@ describe("Adapter Integration", () => {
       name: "new_test_name"
     }))
 
-    const updated = await repo.update(toUpdate);
+    updated = await repo.update(toUpdate);
 
     expect(updated).toBeDefined();
     expect(updated.equals(created)).toEqual(false);
     expect(updated.equals(created, "updatedOn", "name")).toEqual(true); // minus the expected changes
+    const metadata = (updated as any)[PersistenceKeys.METADATA]
+    expect(metadata).toBeDefined();
+  })
+
+  it("deletes", async () => {
+    const deleted = await repo.delete(created.id as string);
+    expect(deleted).toBeDefined();
+    expect(deleted.equals(updated)).toEqual(true);
+
+    await expect(repo.read(created.id as string)).rejects.toThrowError(NotFoundError)
+
+    const metadata = (deleted as any)[PersistenceKeys.METADATA]
+    expect(metadata).toBeDefined();
   })
 })

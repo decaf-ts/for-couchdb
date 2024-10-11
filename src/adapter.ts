@@ -1,9 +1,8 @@
 import {
   Adapter,
-  getPersistenceKey,
-  PersistenceKeys,
   Sequence,
   SequenceOptions,
+  PersistenceKeys,
 } from "@decaf-ts/core";
 import { Constructor } from "@decaf-ts/decorator-validation";
 import {
@@ -25,7 +24,6 @@ import {
   NotFoundError,
 } from "@decaf-ts/db-decorators";
 import "reflect-metadata";
-import { metadata } from "@decaf-ts/reflection";
 
 export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
   constructor(scope: DocumentScope<any>, flavour: string) {
@@ -70,10 +68,12 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
       throw new InternalError(
         `Failed to insert doc id: ${id} in table ${tableName}`,
       );
-    metadata(
-      getPersistenceKey(PersistenceKeys.METADATA),
-      response.rev,
-    )(model.constructor);
+    Object.defineProperty(model, PersistenceKeys.METADATA, {
+      enumerable: false,
+      configurable: false,
+      writable: false,
+      value: response.rev,
+    });
     return model;
   }
 
@@ -88,10 +88,11 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     } catch (e: any) {
       throw this.parseError(e);
     }
-    metadata(
-      getPersistenceKey(PersistenceKeys.METADATA),
-      record._rev,
-    )(record.constructor);
+    Object.defineProperty(record, PersistenceKeys.METADATA, {
+      enumerable: false,
+      writable: false,
+      value: record._rev,
+    });
     return record;
   }
 
@@ -103,18 +104,16 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
     record[CouchDBKeys.ID] = this.generateId(tableName, id);
-    const rev = Reflect.getMetadata(
-      getPersistenceKey(PersistenceKeys.METADATA),
-      model,
-    );
+    const rev = model[PersistenceKeys.METADATA];
     if (!rev)
       throw new InternalError(
         `No revision number found for record with id ${id}`,
       );
     Object.assign(record, model);
+    record[CouchDBKeys.REV] = rev;
     let response: DocumentInsertResponse;
     try {
-      response = await this.native.insert(record, { rev: rev });
+      response = await this.native.insert(record);
     } catch (e: any) {
       throw this.parseError(e);
     }
@@ -123,10 +122,12 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
       throw new InternalError(
         `Failed to update doc id: ${id} in table ${tableName}`,
       );
-    metadata(
-      getPersistenceKey(PersistenceKeys.METADATA),
-      response.rev,
-    )(model.constructor);
+    Object.defineProperty(model, PersistenceKeys.METADATA, {
+      enumerable: false,
+      configurable: false,
+      writable: false,
+      value: response.rev,
+    });
     return model;
   }
 
@@ -142,10 +143,12 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     } catch (e: any) {
       throw this.parseError(e);
     }
-    metadata(
-      getPersistenceKey(PersistenceKeys.METADATA),
-      record._rev,
-    )(record.constructor);
+    Object.defineProperty(record, PersistenceKeys.METADATA, {
+      enumerable: false,
+      configurable: false,
+      writable: false,
+      value: record._rev,
+    });
     return record;
   }
 
@@ -163,20 +166,26 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
 
   protected static parseError(err: Error | string, reason?: string): BaseError {
     if (err instanceof BaseError) return err as any;
-    const code =
-      typeof err === "string"
-        ? err
-        : (err as any).code
-          ? (err as any).code
-          : err.message;
+    let code: string = "";
+    if (typeof err === "string") {
+      code = err;
+      if (code.match(/already exist|update conflict/g))
+        return new ConflictError(code);
+      if (code.match(/missing|deleted/g)) return new NotFoundError(code);
+    } else if ((err as any).code) {
+      code = (err as any).code;
+      reason = reason || err.message;
+    } else if ((err as any).statusCode) {
+      code = (err as any).statusCode;
+      reason = reason || err.message;
+    }
 
-    if (code.match(/already exist|update conflict/g))
-      return new ConflictError(code);
-    if (code.match(/missing/g)) return new NotFoundError(code);
-
-    switch (code) {
+    switch (code.toString()) {
       case "401":
-        return new ConflictError(`${code}${reason ? ` - ${reason}` : ""}`);
+      case "412":
+        return new ConflictError(reason as string);
+      case "404":
+        return new NotFoundError(reason as string);
       default:
         return new InternalError(err);
     }
