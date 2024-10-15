@@ -3,6 +3,12 @@ import {
   Sequence,
   SequenceOptions,
   PersistenceKeys,
+  Operator,
+  GroupOperator,
+  Statement,
+  Query,
+  ClauseFactory,
+  Condition,
 } from "@decaf-ts/core";
 import { Constructor } from "@decaf-ts/decorator-validation";
 import {
@@ -14,20 +20,81 @@ import {
   DatabaseCreateResponse,
   MaybeDocument,
   MangoResponse,
+  MangoSelector,
 } from "nano";
 import * as Nano from "nano";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
   ConflictError,
+  DBModel,
   InternalError,
   NotFoundError,
 } from "@decaf-ts/db-decorators";
 import "reflect-metadata";
+import { CouchDBStatement } from "./query/Statement";
+import { Factory } from "./query";
+import { translateOperators } from "./query/translate";
 
 export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
+  private factory?: Factory;
+
   constructor(scope: DocumentScope<any>, flavour: string) {
     super(scope, flavour);
+  }
+
+  get Clauses(): ClauseFactory<DocumentScope<any>, MangoQuery> {
+    if (!this.factory) this.factory = new Factory(this);
+    return this.factory;
+  }
+
+  Query<M extends DBModel>(): Query<MangoQuery, M> {
+    return super.Query();
+  }
+
+  get Statement(): Statement<MangoQuery> {
+    return new CouchDBStatement(this);
+  }
+
+  parseCondition(condition: Condition): MangoQuery {
+    function merge(
+      op: GroupOperator,
+      obj1: MangoSelector,
+      obj2: MangoSelector,
+    ): MangoQuery {
+      const result: MangoQuery = { selector: {} as MangoSelector };
+      result.selector[op] = [obj1, obj2];
+      return result;
+    }
+
+    const { attr1, operator, comparison } = condition as unknown as {
+      attr1: string | Condition;
+      operator: Operator | GroupOperator;
+      comparison: any;
+    };
+
+    let op: MangoSelector = {} as MangoSelector;
+    if (
+      [GroupOperator.AND, GroupOperator.OR, Operator.NOT].indexOf(
+        operator as GroupOperator,
+      ) === -1
+    ) {
+      op[attr1 as string] = {} as MangoSelector;
+      (op[attr1 as string] as MangoSelector)[translateOperators(operator)] =
+        comparison;
+    } else if (operator === Operator.NOT) {
+      op = this.parseCondition(attr1 as Condition).selector as MangoSelector;
+      op[translateOperators(Operator.NOT)] = {} as MangoSelector;
+      (op[translateOperators(Operator.NOT)] as MangoSelector)[
+        (attr1 as unknown as { attr1: string }).attr1
+      ] = comparison;
+    } else {
+      const op1: any = this.parseCondition(attr1 as Condition).selector;
+      const op2: any = this.parseCondition(comparison as Condition).selector;
+      op = merge(operator as GroupOperator, op1, op2).selector;
+    }
+
+    return { selector: op };
   }
 
   getSequence<V>(
