@@ -9,6 +9,7 @@ import {
   Query,
   ClauseFactory,
   Condition,
+  ConnectionError,
 } from "@decaf-ts/core";
 import {
   MangoQuery,
@@ -20,6 +21,7 @@ import {
   MaybeDocument,
   MangoResponse,
   MangoSelector,
+  DocumentBulkResponse,
 } from "nano";
 import * as Nano from "nano";
 import { CouchDBKeys, reservedAttributes } from "./constants";
@@ -139,6 +141,49 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     return model;
   }
 
+  async createAll(
+    tableName: string,
+    ids: string[] | number[],
+    models: Record<string, any>[],
+  ): Promise<Record<string, any>[]> {
+    if (ids.length !== models.length)
+      throw new InternalError("Ids and models must have the same length");
+
+    const records = ids.map((id, count) => {
+      const record: Record<string, any> = {};
+      record[CouchDBKeys.TABLE] = tableName;
+      record[CouchDBKeys.ID] = this.generateId(tableName, id);
+      Object.assign(record, models[count]);
+    });
+    let response: DocumentBulkResponse[];
+    try {
+      response = await this.native.bulk({ docs: records });
+    } catch (e: any) {
+      throw this.parseError(e);
+    }
+    if (!response.every((r) => !r.error)) {
+      const errors = response.reduce((accum: string[], el, i) => {
+        if (el.error)
+          accum.push(
+            `el ${i}: ${el.error}${el.reason ? ` - ${el.reason}` : ""}`,
+          );
+        return accum;
+      }, []);
+      throw new InternalError(errors.join("\n"));
+    }
+
+    models.forEach((m, i) => {
+      Object.defineProperty(m, PersistenceKeys.METADATA, {
+        enumerable: false,
+        configurable: false,
+        writable: false,
+        value: response[i].rev,
+      });
+      return m;
+    });
+    return models;
+  }
+
   async read(
     tableName: string,
     id: string | number,
@@ -240,6 +285,8 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     } else if ((err as any).statusCode) {
       code = (err as any).statusCode;
       reason = reason || err.message;
+    } else {
+      code = err.message;
     }
 
     switch (code.toString()) {
@@ -249,7 +296,10 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
         return new ConflictError(reason as string);
       case "404":
         return new NotFoundError(reason as string);
+      case "400":
+        return new InternalError(err);
       default:
+        if (code.match(/ECONNREFUSED/g)) return new ConnectionError(err);
         return new InternalError(err);
     }
   }

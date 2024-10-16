@@ -12,11 +12,9 @@ import { Sequence } from "@decaf-ts/core";
  * @summary Abstract implementation of a Sequence
  * @description provides the basic functionality for {@link Sequence}s
  *
- * @prop {Repository} repository
- * @prop {SequenceOptions} [options] defaults to {@link DefaultSequenceOptions}
+ * @param {SequenceOptions} options
  *
- * @class AbsSequence
- * @abstract
+ * @class CouchDBSequence
  * @implements Sequence
  *
  * @category Sequences
@@ -70,7 +68,7 @@ export class CouchDBSequence implements Sequence {
    * @protected
    * @param value
    */
-  protected parse(value: string | number | bigint): string | number | bigint {
+  private parse(value: string | number | bigint): string | number | bigint {
     switch (this.options.type) {
       case "Number":
         return typeof value === "string"
@@ -89,51 +87,65 @@ export class CouchDBSequence implements Sequence {
    * @summary increments the sequence
    * @description Sequence specific implementation
    *
-   * @param {any} current
-   * @param create
+   * @param {string | number | bigint} current
+   * @param count
    * @protected
    */
-  protected async increment(
+  private async increment(
     current: string | number | bigint,
-    create = false,
+    count?: number,
   ): Promise<string | number | bigint> {
     const { type, incrementBy, name } = this.options;
     let next: string | number | bigint;
+    const toIncrementBy = count || incrementBy;
+    if (toIncrementBy % incrementBy !== 0)
+      throw new InternalError(
+        `Value to increment does not consider the incrementBy setting: ${incrementBy}`,
+      );
     switch (type) {
       case "Number":
-        next = (this.parse(current) as number) + incrementBy;
+        next = (this.parse(current) as number) + toIncrementBy;
         break;
       case "BigInt":
-        next = (this.parse(current) as bigint) + BigInt(incrementBy);
+        next = (this.parse(current) as bigint) + BigInt(toIncrementBy);
         break;
       default:
         throw new InternalError("Should never happen");
     }
     let seq: Seq;
-    if (create) {
-      seq = await this.repo.create(new Seq({ name: name, current: next }));
-    } else {
-      seq = await this.repo.read(name as string);
-      seq = await this.repo.update(
-        new Seq(
-          Object.assign({}, seq, {
-            current: next,
-          }),
-        ),
-      );
+    try {
+      seq = await this.repo.update(new Seq({ id: name, current: next }));
+    } catch (e: any) {
+      if (!(e instanceof NotFoundError)) throw e;
+      seq = await this.repo.create(new Seq({ id: name, current: next }));
     }
+
     return seq.current as string | number | bigint;
   }
 
   /**
    * @summary Generates the next value in th sequence
-   * @description calls {@link AbsSequence#parse} on the current value
-   * followed by {@link AbsSequence#increment}
+   * @description calls {@link Sequence#parse} on the current value
+   * followed by {@link Sequence#increment}
    *
-   * @param {T} model
    */
   async next(): Promise<number | string | bigint> {
     const current = await this.current();
     return this.increment(current);
+  }
+
+  async range(count: number): Promise<(number | string | bigint)[]> {
+    const current = (await this.current()) as number;
+    const incrementBy = this.parse(this.options.incrementBy) as number;
+    let next: string | number | bigint =
+      current + (this.parse(count) as number) * incrementBy;
+    next = await this.increment(current, next);
+    const range: (number | string | bigint)[] = [];
+    for (let i: number = 1; i <= count; i++) {
+      range.push(current + incrementBy * (this.parse(i) as number));
+    }
+    if (range[range.length - 1] !== next)
+      throw new InternalError("Miscalculation of range");
+    return range;
   }
 }
