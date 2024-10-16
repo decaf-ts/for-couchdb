@@ -20,7 +20,8 @@ jest.setTimeout(50000)
 describe("Adapter Integration", () => {
 
   let con: ServerScope;
-  let repo: Repository<TestModel>;
+  let adapter: CouchDBAdapter;
+  let repo: Repository<TestModel, any>;
 
   beforeAll(async () => {
     con = await CouchDBAdapter.connect(admin, admin_password, dbHost);
@@ -33,11 +34,12 @@ describe("Adapter Integration", () => {
         throw e;
     }
     con = await CouchDBAdapter.connect(user, user_password, dbHost);
-    repo = new Repository<TestModel>(new CouchDBAdapter(wrapDocumentScope(con, dbName, user, user_password), "nano"), TestModel);
+    adapter = new CouchDBAdapter(wrapDocumentScope(con, dbName, user, user_password), "nano");
+    repo = new Repository<TestModel>(adapter, TestModel);
   })
 
   afterAll(async () => {
-    // await CouchDBAdapter.deleteDatabase(con, dbName);
+    await CouchDBAdapter.deleteDatabase(con, dbName);
   })
 
 

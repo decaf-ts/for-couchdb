@@ -1,1 +1,1 @@
-export * from "./Sequence";
+export * from "./CouchDBSequence";

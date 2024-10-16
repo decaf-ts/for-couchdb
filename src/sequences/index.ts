@@ -1,1 +1,1 @@
-export * from "./AbsSequence";
+export * from "./Sequence";

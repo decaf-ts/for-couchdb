@@ -1,6 +1,8 @@
 import { model, ModelArg, required } from "@decaf-ts/decorator-validation";
-import { BaseModel, pk, index } from "@decaf-ts/core";
+import { BaseModel, pk, index, table, uses } from "@decaf-ts/core";
 
+@table("??sequence")
+@uses("nano")
 @model()
 export class Sequence extends BaseModel {
   /**
@@ -10,7 +12,7 @@ export class Sequence extends BaseModel {
    * @see pk
    */
   @pk()
-  name?: string = undefined;
+  id?: string = undefined;
   /**
    * @summary the current value for the DBSequence
    * @prop current
@@ -20,9 +22,9 @@ export class Sequence extends BaseModel {
    */
   @required()
   @index()
-  current?: string | number = "0";
+  current?: string | number = undefined;
 
   constructor(seq?: ModelArg<Sequence>) {
-    super(seq as any);
+    super(seq);
   }
 }

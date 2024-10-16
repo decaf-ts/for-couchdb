@@ -10,7 +10,6 @@ import {
   ClauseFactory,
   Condition,
 } from "@decaf-ts/core";
-import { Constructor } from "@decaf-ts/decorator-validation";
 import {
   MangoQuery,
   DocumentScope,
@@ -35,6 +34,7 @@ import "reflect-metadata";
 import { CouchDBStatement } from "./query/Statement";
 import { Factory } from "./query";
 import { translateOperators } from "./query/translate";
+import { CouchDBSequence } from "./sequences/Sequence";
 
 export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
   private factory?: Factory;
@@ -97,13 +97,8 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     return { selector: op };
   }
 
-  getSequence<V>(
-    model: V,
-    sequence: Constructor<Sequence>,
-    options: SequenceOptions | undefined,
-  ): Promise<Sequence> {
-    console.log(model, sequence, options);
-    return Promise.resolve(undefined as unknown as Sequence);
+  async Sequence(options: SequenceOptions): Promise<Sequence> {
+    return new CouchDBSequence(options);
   }
 
   createIndex(...args: any[]): Promise<any> {
@@ -250,6 +245,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     switch (code.toString()) {
       case "401":
       case "412":
+      case "409":
         return new ConflictError(reason as string);
       case "404":
         return new NotFoundError(reason as string);
@@ -333,6 +329,17 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
         throw new InternalError(
           `Failed to authorize user ${user} to db ${dbName}`,
         );
+    } catch (e: any) {
+      throw this.parseError(e);
+    }
+  }
+
+  static async deleteUser(con: ServerScope, dbName: string, user: string) {
+    const users = await con.db.use("_users");
+    const id = "org.couchdb.user:" + user;
+    try {
+      const usr = await users.get(id);
+      await users.destroy(id, usr._rev);
     } catch (e: any) {
       throw this.parseError(e);
     }
