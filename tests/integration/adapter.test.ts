@@ -47,7 +47,7 @@ describe("Adapter Integration", () => {
 
   it("creates", async () => {
     const model = new TestModel({
-      id: Date.now().toString(),
+      id: Date.now(),
       name: "test_name",
       nif: "123456789"
     });
@@ -61,7 +61,7 @@ describe("Adapter Integration", () => {
 
   it("reads", async () => {
 
-    const read = await repo.read(created.id as string);
+    const read = await repo.read(created.id as number);
 
     expect(read).toBeDefined();
     expect(read.equals(created)).toEqual(true); // same model
@@ -86,11 +86,11 @@ describe("Adapter Integration", () => {
   })
 
   it("deletes", async () => {
-    const deleted = await repo.delete(created.id as string);
+    const deleted = await repo.delete(created.id as number);
     expect(deleted).toBeDefined();
     expect(deleted.equals(updated)).toEqual(true);
 
-    await expect(repo.read(created.id as string)).rejects.toThrowError(NotFoundError)
+    await expect(repo.read(created.id as number)).rejects.toThrowError(NotFoundError)
 
     const metadata = (deleted as any)[PersistenceKeys.METADATA]
     expect(metadata).toBeDefined();
