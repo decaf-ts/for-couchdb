@@ -9,7 +9,7 @@ import {pk} from "@decaf-ts/core";
 export class TestModel extends BaseModel {
 
   @pk()
-  id?: string = undefined;
+  id?: number = undefined;
 
   @column("tst_name")
   @required()

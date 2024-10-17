@@ -137,9 +137,10 @@ export class CouchDBSequence implements Sequence {
   async range(count: number): Promise<(number | string | bigint)[]> {
     const current = (await this.current()) as number;
     const incrementBy = this.parse(this.options.incrementBy) as number;
-    let next: string | number | bigint =
-      current + (this.parse(count) as number) * incrementBy;
-    next = await this.increment(current, next);
+    const next: string | number | bigint = await this.increment(
+      current,
+      (this.parse(count) as number) * incrementBy,
+    );
     const range: (number | string | bigint)[] = [];
     for (let i: number = 1; i <= count; i++) {
       range.push(current + incrementBy * (this.parse(i) as number));

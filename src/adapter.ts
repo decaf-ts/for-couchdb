@@ -10,6 +10,7 @@ import {
   ClauseFactory,
   Condition,
   ConnectionError,
+  Repository,
 } from "@decaf-ts/core";
 import {
   MangoQuery,
@@ -154,6 +155,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
       record[CouchDBKeys.TABLE] = tableName;
       record[CouchDBKeys.ID] = this.generateId(tableName, id);
       Object.assign(record, models[count]);
+      return record;
     });
     let response: DocumentBulkResponse[];
     try {
@@ -173,12 +175,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     }
 
     models.forEach((m, i) => {
-      Object.defineProperty(m, PersistenceKeys.METADATA, {
-        enumerable: false,
-        configurable: false,
-        writable: false,
-        value: response[i].rev,
-      });
+      Repository.setMetadata(m as any, response[i].rev);
       return m;
     });
     return models;

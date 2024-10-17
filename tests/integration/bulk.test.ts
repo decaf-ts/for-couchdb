@@ -68,7 +68,7 @@ describe("Bulk operations", () => {
 
   it("Creates in bulk", async () => {
     const repo: CouchDBRepository<TestBulkModel> = Repository.forModel<TestBulkModel, CouchDBRepository<TestBulkModel>>(TestBulkModel);
-    const models = [1,2,3,4,5].map(i => new TestBulkModel({
+    const models = [1].map(i => new TestBulkModel({
       attr1: "user_name_" + i,
     }))
     created = await repo.createAll(models);

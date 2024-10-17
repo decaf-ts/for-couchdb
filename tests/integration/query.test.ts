@@ -2,7 +2,7 @@ import {BaseModel, pk, Repository, uses} from "@decaf-ts/core";
 import {min, minlength, model, ModelArg, required, type} from "@decaf-ts/decorator-validation";
 import {ServerScope} from "nano";
 import {CouchDBAdapter, wrapDocumentScope} from "../../src";
-import {ConflictError, NotFoundError, readonly} from "@decaf-ts/db-decorators";
+import {ConflictError, readonly} from "@decaf-ts/db-decorators";
 import {CouchDBRepository} from "../../src/interfaces";
 
 
@@ -13,7 +13,7 @@ const user_password="couchdb.admin";
 const dbName="queries_db";
 const dbHost="localhost:10010";
 
-describe("Bulk operations", () => {
+describe("Queries", () => {
 
   let con: ServerScope;
   let adapter: CouchDBAdapter;
@@ -61,19 +61,37 @@ describe("Bulk operations", () => {
   }
 
   let created: TestUser[];
-  let updated: TestUser[];
 
   it("Creates in bulk", async () => {
     const repo: CouchDBRepository<TestUser> = Repository.forModel<TestUser, CouchDBRepository<TestUser>>(TestUser);
-    const models = Object.keys(new Array(10)).map(i => parseInt(i)).map(i => new TestUser({
-      age: 18 + i,
-      name: "user_name_" + i,
-      sex: i % 2 === 0 ? "M" : "F"
-    }))
+    const models = Object.keys(new Array(10))
+      .map(i => parseInt(i))
+      .map(i => new TestUser({
+        age: Math.floor(18 + (i - 1)/3),
+        name: "user_name_" + i,
+        sex: i % 2 === 0 ? "M" : "F"
+      }))
     created = await repo.createAll(models);
     expect(created).toBeDefined();
     expect(Array.isArray(created)).toEqual(true);
     expect(created.every(el => el instanceof TestUser)).toEqual(true)
     expect(created.every(el => !el.hasErrors())).toEqual(true)
+  })
+
+  it("Performs simple queries - full olject", async () => {
+    const repo: CouchDBRepository<TestUser> = Repository.forModel<TestUser, CouchDBRepository<TestUser>>(TestUser);
+    const selected = await repo.select().execute<TestUser[]>();
+    expect(created.length).toEqual(selected.length);
+    expect(created.every((c, i) => c.equals(selected[i])))
+  })
+
+  it("Performs simple queries - attributes only", async () => {
+    const repo: CouchDBRepository<TestUser> = Repository.forModel<TestUser, CouchDBRepository<TestUser>>(TestUser);
+    const selected = await repo.select(["age", "sex"]).execute<{age: number, sex: "M" | "F"}[]>();
+    expect(created.length).toEqual(selected.length);
+    expect(created.every((c, i) => {
+      expect(c.age).toEqual(selected[i].age);
+      expect(c.sex).toEqual(selected[i].sex);
+    }))
   })
 })
