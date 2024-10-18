@@ -1,4 +1,4 @@
-import { SelectClause } from "@decaf-ts/core";
+import { Const, SelectClause } from "@decaf-ts/core";
 import { MangoQuery } from "nano";
 import { DBModel } from "@decaf-ts/db-decorators";
 import { ModelArg } from "@decaf-ts/decorator-validation";
@@ -12,7 +12,7 @@ export class CouchDBSelectClause<M extends DBModel> extends SelectClause<
   }
 
   build(query: MangoQuery): MangoQuery {
-    if (!this.selector) return query;
+    if (!this.selector || this.selector === Const.FULL_RECORD) return query;
     query.fields =
       typeof this.selector === "string"
         ? [this.selector as string]
