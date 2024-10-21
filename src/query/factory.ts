@@ -5,17 +5,14 @@ import {
   FromClause,
   FromSelector,
   GroupBySelector,
-  GroupOperator,
   LimitSelector,
   OffsetSelector,
-  Operator,
   OrderBySelector,
   QueryError,
   SelectSelector,
   Statement,
-  table,
 } from "@decaf-ts/core";
-import nano, { DocumentScope, MangoQuery, MangoSelector } from "nano";
+import { DocumentScope, MangoQuery, MangoSelector } from "nano";
 import { LimitClause } from "@decaf-ts/core";
 import { SelectClause } from "@decaf-ts/core";
 import { WhereClause } from "@decaf-ts/core";
@@ -25,8 +22,8 @@ import { GroupByClause } from "@decaf-ts/core";
 import { ValuesClause } from "@decaf-ts/core";
 import { InsertClause } from "@decaf-ts/core";
 import { CouchDBFromClause } from "./FromClause";
-import { ModelArg } from "@decaf-ts/decorator-validation";
-import { DBModel, InternalError } from "@decaf-ts/db-decorators";
+import { ModelArg, Model } from "@decaf-ts/decorator-validation";
+import { InternalError } from "@decaf-ts/db-decorators";
 import { CouchDBInsertClause } from "./InsertClause";
 import { CouchDBStatement } from "./Statement";
 import { CouchDBWhereClause } from "./WhereClause";
@@ -39,16 +36,16 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
     super(adapter);
   }
 
-  from<M extends DBModel>(
+  from<M extends Model>(
     statement: Statement<MangoQuery>,
-    selector: FromSelector<M>,
+    selector: FromSelector<M>
   ): FromClause<MangoQuery, M> {
     return new CouchDBFromClause({ statement: statement, selector: selector });
   }
 
   groupBy(
     statement: Statement<MangoQuery>,
-    selector: GroupBySelector,
+    selector: GroupBySelector
   ): GroupByClause<MangoQuery> {
     return new (class extends GroupByClause<MangoQuery> {
       constructor(clause: ModelArg<GroupByClause<MangoQuery>>) {
@@ -65,7 +62,7 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
     });
   }
 
-  insert<M extends DBModel>(): InsertClause<MangoQuery, M> {
+  insert<M extends Model>(): InsertClause<MangoQuery, M> {
     return new CouchDBInsertClause({
       statement: new CouchDBStatement(this.adapter),
     });
@@ -73,7 +70,7 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
 
   limit(
     statement: Statement<MangoQuery>,
-    selector: LimitSelector,
+    selector: LimitSelector
   ): LimitClause<MangoQuery> {
     return new (class extends LimitClause<MangoQuery> {
       constructor(clause: ModelArg<LimitClause<MangoQuery>>) {
@@ -92,7 +89,7 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
 
   offset(
     statement: Statement<MangoQuery>,
-    selector: OffsetSelector,
+    selector: OffsetSelector
   ): OffsetClause<MangoQuery> {
     return new (class extends OffsetClause<MangoQuery> {
       constructor(clause: ModelArg<OffsetClause<MangoQuery>>) {
@@ -113,7 +110,7 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
 
   orderBy(
     statement: Statement<MangoQuery>,
-    selector: OrderBySelector[],
+    selector: OrderBySelector[]
   ): OrderByClause<MangoQuery> {
     return new (class extends OrderByClause<MangoQuery> {
       constructor(clause: ModelArg<OrderByClause<MangoQuery>>) {
@@ -145,8 +142,8 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
     });
   }
 
-  select<M extends DBModel>(
-    selector: SelectSelector | undefined,
+  select<M extends Model>(
+    selector: SelectSelector | undefined
   ): SelectClause<MangoQuery, M> {
     return new CouchDBSelectClause({
       statement: new CouchDBStatement(this.adapter),
@@ -154,9 +151,9 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
     });
   }
 
-  values<M extends DBModel>(
+  values<M extends Model>(
     statement: Statement<MangoQuery>,
-    values: M[],
+    values: M[]
   ): ValuesClause<MangoQuery, M> {
     return new CouchDBValuesClause<M>({
       statement: statement,
@@ -166,7 +163,7 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
 
   where(
     statement: Statement<MangoQuery>,
-    condition: Condition,
+    condition: Condition
   ): WhereClause<MangoQuery> {
     return new CouchDBWhereClause({
       statement: statement,

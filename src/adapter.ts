@@ -29,7 +29,6 @@ import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
   ConflictError,
-  DBModel,
   InternalError,
   NotFoundError,
 } from "@decaf-ts/db-decorators";
@@ -38,6 +37,7 @@ import { CouchDBStatement } from "./query/Statement";
 import { Factory } from "./query";
 import { translateOperators } from "./query/translate";
 import { CouchDBSequence } from "./sequences/Sequence";
+import { Model } from "@decaf-ts/decorator-validation";
 
 export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
   private factory?: Factory;
@@ -51,7 +51,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     return this.factory;
   }
 
-  Query<M extends DBModel>(): Query<MangoQuery, M> {
+  Query<M extends Model>(): Query<MangoQuery, M> {
     return super.Query();
   }
 
@@ -63,7 +63,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     function merge(
       op: GroupOperator,
       obj1: MangoSelector,
-      obj2: MangoSelector,
+      obj2: MangoSelector
     ): MangoQuery {
       const result: MangoQuery = { selector: {} as MangoSelector };
       result.selector[op] = [obj1, obj2];
@@ -79,7 +79,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     let op: MangoSelector = {} as MangoSelector;
     if (
       [GroupOperator.AND, GroupOperator.OR, Operator.NOT].indexOf(
-        operator as GroupOperator,
+        operator as GroupOperator
       ) === -1
     ) {
       op[attr1 as string] = {} as MangoSelector;
@@ -116,7 +116,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
   async create(
     tableName: string,
     id: string | number,
-    model: Record<string, any>,
+    model: Record<string, any>
   ): Promise<Record<string, any>> {
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
@@ -131,7 +131,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
 
     if (!response.ok)
       throw new InternalError(
-        `Failed to insert doc id: ${id} in table ${tableName}`,
+        `Failed to insert doc id: ${id} in table ${tableName}`
       );
     Object.defineProperty(model, PersistenceKeys.METADATA, {
       enumerable: false,
@@ -145,7 +145,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
   async createAll(
     tableName: string,
     ids: string[] | number[],
-    models: Record<string, any>[],
+    models: Record<string, any>[]
   ): Promise<Record<string, any>[]> {
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
@@ -167,7 +167,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
       const errors = response.reduce((accum: string[], el, i) => {
         if (el.error)
           accum.push(
-            `el ${i}: ${el.error}${el.reason ? ` - ${el.reason}` : ""}`,
+            `el ${i}: ${el.error}${el.reason ? ` - ${el.reason}` : ""}`
           );
         return accum;
       }, []);
@@ -183,7 +183,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
 
   async read(
     tableName: string,
-    id: string | number,
+    id: string | number
   ): Promise<Record<string, any>> {
     const _id = this.generateId(tableName, id);
     let record: DocumentGetResponse;
@@ -203,7 +203,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
   async update(
     tableName: string,
     id: string | number,
-    model: Record<string, any>,
+    model: Record<string, any>
   ): Promise<Record<string, any>> {
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
@@ -211,7 +211,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     const rev = model[PersistenceKeys.METADATA];
     if (!rev)
       throw new InternalError(
-        `No revision number found for record with id ${id}`,
+        `No revision number found for record with id ${id}`
       );
     Object.assign(record, model);
     record[CouchDBKeys.REV] = rev;
@@ -224,7 +224,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
 
     if (!response.ok)
       throw new InternalError(
-        `Failed to update doc id: ${id} in table ${tableName}`,
+        `Failed to update doc id: ${id} in table ${tableName}`
       );
     Object.defineProperty(model, PersistenceKeys.METADATA, {
       enumerable: false,
@@ -237,7 +237,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
 
   async delete(
     tableName: string,
-    id: string | number,
+    id: string | number
   ): Promise<Record<string, any>> {
     const _id = this.generateId(tableName, id);
     let record: DocumentGetResponse;
@@ -305,7 +305,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     user: string,
     pass: string,
     host = "localhost:5984",
-    protocol: "http" | "https" = "http",
+    protocol: "http" | "https" = "http"
   ): ServerScope {
     return Nano(`${protocol}://${user}:${pass}@${host}`);
   }
@@ -338,7 +338,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     dbName: string,
     user: string,
     pass: string,
-    roles: string[] = [],
+    roles: string[] = []
   ) {
     const users = await con.db.use("_users");
     const usr = {
@@ -350,7 +350,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     };
     try {
       const created: DocumentInsertResponse = await users.insert(
-        usr as MaybeDocument,
+        usr as MaybeDocument
       );
       const { ok } = created;
       if (!ok) throw new InternalError(`Failed to create user ${user}`);
@@ -374,7 +374,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
       });
       if (!security.ok)
         throw new InternalError(
-          `Failed to authorize user ${user} to db ${dbName}`,
+          `Failed to authorize user ${user} to db ${dbName}`
         );
     } catch (e: any) {
       throw this.parseError(e);

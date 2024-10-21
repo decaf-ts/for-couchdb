@@ -1,9 +1,8 @@
 import { Const, SelectClause } from "@decaf-ts/core";
 import { MangoQuery } from "nano";
-import { DBModel } from "@decaf-ts/db-decorators";
-import { ModelArg } from "@decaf-ts/decorator-validation";
+import { ModelArg, Model } from "@decaf-ts/decorator-validation";
 
-export class CouchDBSelectClause<M extends DBModel> extends SelectClause<
+export class CouchDBSelectClause<M extends Model> extends SelectClause<
   MangoQuery,
   M
 > {

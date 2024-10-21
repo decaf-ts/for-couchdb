@@ -1,10 +1,9 @@
 import { ValuesClause } from "@decaf-ts/core";
 import { MangoQuery } from "nano";
-import { DBModel } from "@decaf-ts/db-decorators";
-import { ModelArg } from "@decaf-ts/decorator-validation";
+import { ModelArg, Model } from "@decaf-ts/decorator-validation";
 import { InternalError } from "@decaf-ts/db-decorators";
 
-export class CouchDBValuesClause<M extends DBModel> extends ValuesClause<
+export class CouchDBValuesClause<M extends Model> extends ValuesClause<
   MangoQuery,
   M
 > {
