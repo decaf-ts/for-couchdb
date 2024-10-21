@@ -23,6 +23,7 @@ import {
   MangoResponse,
   MangoSelector,
   DocumentBulkResponse,
+  MangoOperator,
 } from "nano";
 import * as Nano from "nano";
 import { CouchDBKeys, reservedAttributes } from "./constants";
@@ -61,7 +62,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
 
   parseCondition(condition: Condition): MangoQuery {
     function merge(
-      op: GroupOperator,
+      op: MangoOperator,
       obj1: MangoSelector,
       obj2: MangoSelector
     ): MangoQuery {
@@ -94,7 +95,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     } else {
       const op1: any = this.parseCondition(attr1 as Condition).selector;
       const op2: any = this.parseCondition(comparison as Condition).selector;
-      op = merge(operator as GroupOperator, op1, op2).selector;
+      op = merge(translateOperators(operator), op1, op2).selector;
     }
 
     return { selector: op };
