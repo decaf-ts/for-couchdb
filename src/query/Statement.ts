@@ -4,6 +4,7 @@ import { Adapter } from "@decaf-ts/core";
 import { findPrimaryKey, InternalError } from "@decaf-ts/db-decorators";
 import { Constructor } from "@decaf-ts/decorator-validation";
 import { CouchDBKeys } from "../constants";
+import { parseSequenceValue } from "../sequences/utils";
 
 export class CouchDBStatement extends Statement<MangoQuery> {
   constructor(db: Adapter<DocumentScope<any>, MangoQuery>) {
@@ -15,15 +16,16 @@ export class CouchDBStatement extends Statement<MangoQuery> {
     if (!this.fullRecord) return results;
     if (!this.target)
       throw new InternalError(
-        "No target defined in statement. should never happen",
+        "No target defined in statement. should never happen"
       );
 
-    const pkAttr = findPrimaryKey(new this.target() as any).id;
-
+    const pkDef = findPrimaryKey(new this.target() as any);
+    const pkAttr = pkDef.id;
+    const type = pkDef.props.type;
     const processor = function recordProcessor(this: CouchDBStatement, r: any) {
       if (!r[CouchDBKeys.ID])
         throw new InternalError(
-          `No CouchDB Id definition found. Should not be possible`,
+          `No CouchDB Id definition found. Should not be possible`
         );
       const [, ...keyArgs] = r[CouchDBKeys.ID].split("_");
 
@@ -32,7 +34,7 @@ export class CouchDBStatement extends Statement<MangoQuery> {
         r,
         this.target as Constructor<any>,
         pkAttr,
-        id,
+        parseSequenceValue(type, id)
       ) as any;
     }.bind(this);
 

@@ -2,6 +2,7 @@ export * from "./model";
 export * from "./sequences";
 export * from "./adapter";
 export * from "./constants";
+export * from "./errors";
 export * from "./utils";
 
 /**

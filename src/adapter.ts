@@ -11,6 +11,8 @@ import {
   Condition,
   ConnectionError,
   Repository,
+  OrderDirection,
+  IndexMetadata,
 } from "@decaf-ts/core";
 import {
   MangoQuery,
@@ -24,6 +26,7 @@ import {
   MangoSelector,
   DocumentBulkResponse,
   MangoOperator,
+  CreateIndexResponse,
 } from "nano";
 import * as Nano from "nano";
 import { CouchDBKeys, reservedAttributes } from "./constants";
@@ -39,6 +42,8 @@ import { Factory } from "./query";
 import { translateOperators } from "./query/translate";
 import { CouchDBSequence } from "./sequences/Sequence";
 import { Model } from "@decaf-ts/decorator-validation";
+import { generateIndexDoc } from "./utils";
+import { IndexError } from "./errors";
 
 export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
   private factory?: Factory;
@@ -105,13 +110,71 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     return new CouchDBSequence(options);
   }
 
-  createIndex(...args: any[]): Promise<any> {
-    return Promise.resolve(args);
+  async initialize(...args: any[]): Promise<void> {
+    const managedModels = Adapter.models(this.flavour);
+    return this.index(...managedModels.map((m) => new m()));
+  }
+
+  async index<M extends Model>(...models: M[]): Promise<any> {
+    for (const model of models) {
+      const tableName = Repository.table(model);
+      const indexedProperties: Record<
+        string,
+        Record<string, IndexMetadata>
+      > = Repository.indexes(model);
+      const keys = Object.keys(indexedProperties);
+      if (keys.length)
+        for (const property of keys) {
+          for (const index of Object.keys(indexedProperties[property])) {
+            try {
+              const { compositions, directions } =
+                indexedProperties[property][index];
+              const columnName = Repository.column(model, property);
+
+              async function storeIndex(
+                this: CouchDBAdapter,
+                compositions?: string[],
+                directions?: OrderDirection
+              ) {
+                const doc = generateIndexDoc(
+                  columnName,
+                  tableName,
+                  compositions,
+                  directions
+                );
+                const res = await this.native.createIndex(doc);
+                const { result, id, name } = res;
+                if (result === "existing")
+                  throw new ConflictError(
+                    `Index for table ${tableName} column ${property} named ${name} with id ${id}`
+                  );
+              }
+              await storeIndex.call(
+                this,
+                compositions,
+                directions as OrderDirection
+              );
+              if (!compositions && !directions) {
+                await storeIndex.call(this, undefined, OrderDirection.ASC);
+                await storeIndex.call(this, undefined, OrderDirection.DSC);
+              }
+            } catch (e: any) {
+              if (e instanceof ConflictError) continue;
+              if (e instanceof IndexError) throw e;
+              throw new InternalError(e);
+            }
+          }
+        }
+    }
   }
 
   async raw<V>(rawInput: MangoQuery): Promise<V> {
-    const response: MangoResponse<V> = await this.native.find(rawInput);
-    return response.docs as V;
+    try {
+      const response: MangoResponse<V> = await this.native.find(rawInput);
+      return response.docs as V;
+    } catch (e: any) {
+      throw this.parseError(e);
+    }
   }
 
   async create(
@@ -295,9 +358,12 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
       case "404":
         return new NotFoundError(reason as string);
       case "400":
+        if (code.toString().match(/No\sindex\sexists/g))
+          return new IndexError(err);
         return new InternalError(err);
       default:
-        if (code.match(/ECONNREFUSED/g)) return new ConnectionError(err);
+        if (code.toString().match(/ECONNREFUSED/g))
+          return new ConnectionError(err);
         return new InternalError(err);
     }
   }

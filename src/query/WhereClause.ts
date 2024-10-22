@@ -3,6 +3,7 @@ import { MangoOperator, MangoQuery, MangoSelector } from "nano";
 import { ModelArg } from "@decaf-ts/decorator-validation";
 import { CouchDBGroupOperator } from "./constants";
 import { sf } from "@decaf-ts/decorator-validation";
+import { CouchDBKeys } from "../constants";
 
 export class CouchDBWhereClause extends WhereClause<MangoQuery> {
   constructor(clause: ModelArg<WhereClause<MangoQuery>>) {
@@ -11,7 +12,12 @@ export class CouchDBWhereClause extends WhereClause<MangoQuery> {
 
   build(query: MangoQuery): MangoQuery {
     const condition: MangoSelector = this.adapter.parseCondition(
-      this.condition as Condition,
+      Condition.and(
+        this.condition as Condition,
+        Condition.attribute(CouchDBKeys.TABLE).eq(
+          query.selector[CouchDBKeys.TABLE]
+        )
+      )
     ).selector;
 
     const selectorKeys = Object.keys(condition) as MangoOperator[];
@@ -23,12 +29,12 @@ export class CouchDBWhereClause extends WhereClause<MangoQuery> {
         case CouchDBGroupOperator.AND:
           condition[CouchDBGroupOperator.AND] = [
             ...Object.values(
-              condition[CouchDBGroupOperator.AND] as MangoSelector,
+              condition[CouchDBGroupOperator.AND] as MangoSelector
             ).reduce((accum: MangoSelector[], val: any) => {
               const keys = Object.keys(val);
               if (keys.length !== 1)
                 throw new Error(
-                  "Too many keys in query selector. should be one",
+                  "Too many keys in query selector. should be one"
                 );
               const k = keys[0];
               if (k === CouchDBGroupOperator.AND)
@@ -36,11 +42,6 @@ export class CouchDBWhereClause extends WhereClause<MangoQuery> {
               else accum.push(val);
               return accum;
             }, []),
-            ...Object.entries(query.selector).map(([key, val]) => {
-              const result: MangoSelector = {};
-              result[key] = val;
-              return result;
-            }),
           ];
           query.selector = condition;
           break;
@@ -67,8 +68,8 @@ export class CouchDBWhereClause extends WhereClause<MangoQuery> {
               "A {0} query param is about to be overridden: {1} by {2}",
               key,
               query.selector[key] as unknown as string,
-              val as unknown as string,
-            ),
+              val as unknown as string
+            )
           );
         query.selector[key] = val;
       });

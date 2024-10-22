@@ -7,6 +7,7 @@ import {
 } from "@decaf-ts/db-decorators";
 import { repository, SequenceOptions } from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
+import { parseSequenceValue } from "./utils";
 
 /**
  * @summary Abstract implementation of a Sequence
@@ -38,7 +39,7 @@ export class CouchDBSequence implements Sequence {
       if (e instanceof NotFoundError) {
         if (typeof startWith === "undefined")
           throw new InternalError(
-            "Starting value is not defined for a non existing sequence",
+            "Starting value is not defined for a non existing sequence"
           );
         try {
           return this.parse(startWith);
@@ -47,8 +48,8 @@ export class CouchDBSequence implements Sequence {
             sf(
               "Failed to parse initial value for sequence {0}: {1}",
               startWith.toString(),
-              e,
-            ),
+              e
+            )
           );
         }
       }
@@ -56,8 +57,8 @@ export class CouchDBSequence implements Sequence {
         sf(
           "Failed to retrieve current value for sequence {0}: {1}",
           name as string,
-          e,
-        ),
+          e
+        )
       );
     }
   }
@@ -69,18 +70,7 @@ export class CouchDBSequence implements Sequence {
    * @param value
    */
   private parse(value: string | number | bigint): string | number | bigint {
-    switch (this.options.type) {
-      case "Number":
-        return typeof value === "string"
-          ? parseInt(value)
-          : typeof value === "number"
-            ? value
-            : BigInt(value);
-      case "BigInt":
-        return BigInt(value);
-      default:
-        throw new InternalError("Should never happen");
-    }
+    return parseSequenceValue(this.options.type, value);
   }
 
   /**
@@ -93,14 +83,14 @@ export class CouchDBSequence implements Sequence {
    */
   private async increment(
     current: string | number | bigint,
-    count?: number,
+    count?: number
   ): Promise<string | number | bigint> {
     const { type, incrementBy, name } = this.options;
     let next: string | number | bigint;
     const toIncrementBy = count || incrementBy;
     if (toIncrementBy % incrementBy !== 0)
       throw new InternalError(
-        `Value to increment does not consider the incrementBy setting: ${incrementBy}`,
+        `Value to increment does not consider the incrementBy setting: ${incrementBy}`
       );
     switch (type) {
       case "Number":
@@ -139,7 +129,7 @@ export class CouchDBSequence implements Sequence {
     const incrementBy = this.parse(this.options.incrementBy) as number;
     const next: string | number | bigint = await this.increment(
       current,
-      (this.parse(count) as number) * incrementBy,
+      (this.parse(count) as number) * incrementBy
     );
     const range: (number | string | bigint)[] = [];
     for (let i: number = 1; i <= count; i++) {
