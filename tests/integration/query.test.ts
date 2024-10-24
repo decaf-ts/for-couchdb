@@ -17,7 +17,7 @@ import {
   type,
 } from "@decaf-ts/decorator-validation";
 import { ServerScope } from "nano";
-import { CouchDBAdapter, IndexError, wrapDocumentScope } from "../../src";
+import { CouchDBAdapter, wrapDocumentScope } from "../../src";
 import {
   ConflictError,
   InternalError,
@@ -64,21 +64,21 @@ describe("Queries", () => {
   @model()
   class TestUser extends BaseModel {
     @pk({ type: "Number" })
-    id?: number = undefined;
+    id!: number;
 
     @required()
     @min(18)
     @index()
-    age?: number = undefined;
+    age!: number;
 
     @required()
     @minlength(5)
-    name?: string = undefined;
+    name!: string;
 
     @required()
     @readonly()
     @type([String.name])
-    sex?: "M" | "F" = undefined;
+    sex!: "M" | "F";
 
     constructor(arg?: ModelArg<TestUser>) {
       super(arg);
@@ -113,9 +113,7 @@ describe("Queries", () => {
       CouchDBRepository<TestUser>
     >(TestUser);
     const selected = await repo.select().execute<TestUser[]>();
-    expect(
-      created.every((c, i) => c.equals(selected.find((s) => (s.id = c.id))))
-    );
+    expect(created.every((c) => c.equals(selected.find((s) => (s.id = c.id)))));
   });
 
   it("Performs simple queries - attributes only", async () => {
@@ -128,6 +126,7 @@ describe("Queries", () => {
       .execute<{ age: number; sex: "M" | "F" }[]>();
     expect(selected).toEqual(
       expect.arrayContaining(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         [...new Array(created.length)].map((e) =>
           expect.objectContaining({
             age: expect.any(Number),
@@ -161,7 +160,8 @@ describe("Queries", () => {
     expect(selected.length).toEqual(created.filter((c) => c.age === 20).length);
     expect(selected).toEqual(
       expect.arrayContaining(
-        [...new Array(created.length)].map((e) =>
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        [...new Array(created.length)].map((e: any) =>
           expect.objectContaining({
             age: expect.any(Number),
             sex: expect.stringMatching(/^M|F$/g),

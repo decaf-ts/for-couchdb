@@ -2,7 +2,6 @@ import { OrderDirection, PersistenceKeys } from "@decaf-ts/core";
 import {
   CreateIndexRequest,
   DocumentScope,
-  MangoOperator,
   MangoSelector,
   ServerScope,
   SortOrder,
