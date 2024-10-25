@@ -94,7 +94,7 @@ describe(`Complex Database`, function () {
     };
   });
 
-  describe.skip("basic test", () => {
+  describe("basic test", () => {
     let cached: TestCountryModel;
 
     it("creates a new record", async () => {
@@ -109,9 +109,7 @@ describe(`Complex Database`, function () {
     });
 
     it("updates the sequences", async () => {
-      const modelSequence = await sequenceRepository.read(
-        sequenceNameForModel(cached, "pk")
-      );
+      const modelSequence = await sequenceRepository.read(Sequence.pk(cached));
       expect(modelSequence).toBeDefined();
       expect(modelSequence.id).toEqual(TestCountryModel.name + "_pk");
       expect(modelSequence.current).toEqual(1);
@@ -158,10 +156,12 @@ describe(`Complex Database`, function () {
   });
 
   describe("Complex relations Test", () => {
+    let sequenceModel: Sequence;
+    let sequenceCountry: Sequence;
+
     describe("One to one relations", () => {
       let created: TestAddressModel;
       let updated: TestAddressModel;
-
       it("Ensure no population when populate is disabled in a one-to-one relation", async () => {
         const sequenceModel = await adapter.Sequence({
           name: sequenceNameForModel(NoPopulateOnceModel, "pk"),
@@ -212,6 +212,26 @@ describe(`Complex Database`, function () {
       });
 
       it("Creates a one to one relation", async () => {
+        sequenceModel = await adapter.Sequence({
+          name: Sequence.pk(TestAddressModel),
+          type: "Number",
+          startWith: 0,
+          incrementBy: 1,
+          cycle: false,
+        });
+
+        sequenceCountry = await adapter.Sequence({
+          name: Sequence.pk(TestCountryModel),
+          type: "Number",
+          startWith: 0,
+          incrementBy: 1,
+          cycle: false,
+        });
+
+        const addressCurVal = (await sequenceModel.current()) as number;
+
+        const countryCurVal = (await sequenceCountry.current()) as number;
+
         const address = new TestAddressModel({
           street: "test street",
           doorNumber: "test door",
@@ -227,11 +247,11 @@ describe(`Complex Database`, function () {
         const addressSeq = await sequenceRepository.read(
           Sequence.pk(TestAddressModel)
         );
-        expect(addressSeq.current).toEqual(1);
+        expect(addressSeq.current).toEqual(addressCurVal + 1);
         const countrySeq = await sequenceRepository.read(
           Sequence.pk(TestCountryModel)
         );
-        expect(countrySeq.current).toEqual(1);
+        expect(countrySeq.current).toEqual(countryCurVal + 1);
 
         testAddress(created);
 
@@ -287,6 +307,10 @@ describe(`Complex Database`, function () {
       });
 
       it("Creates another to check sequences", async () => {
+        const current = (await sequenceModel.current()) as number;
+
+        const currentCountry = (await sequenceCountry.current()) as number;
+
         const address = new TestAddressModel({
           street: "test street",
           doorNumber: "test door",
@@ -299,21 +323,21 @@ describe(`Complex Database`, function () {
           address
         )) as TestAddressModel;
 
-        expect(created.id).toEqual(2);
-        expect(created.country.id).toEqual(2);
+        expect(created.id).toEqual(current + 1);
+        expect(created.country.id).toEqual(currentCountry + 1);
 
         const addressSeq = await sequenceRepository.read(
           Sequence.pk(TestAddressModel)
         );
-        expect(addressSeq.current).toEqual(2);
+        expect(addressSeq.current).toEqual(current + 1);
         const countrySeq = await sequenceRepository.read(
           Sequence.pk(TestCountryModel)
         );
-        expect(countrySeq.current).toEqual(2);
+        expect(countrySeq.current).toEqual(currentCountry + 1);
       });
     });
 
-    describe.only("One to many relations", () => {
+    describe("One to many relations", () => {
       const user = {
         name: "testuser",
         email: "test@test.com",
@@ -345,7 +369,9 @@ describe(`Complex Database`, function () {
       let created: TestUserModel;
       let updated: TestUserModel;
 
-      it.only("Ensure no population when populate is disabled in a one-to-many relation", async () => {
+      let userSequence: Sequence;
+
+      it("Ensure no population when populate is disabled in a one-to-many relation", async () => {
         const phones = [
           {
             areaCode: "351",
@@ -395,20 +421,46 @@ describe(`Complex Database`, function () {
       });
 
       it("Creates a one to many relation", async () => {
+        userSequence = await adapter.Sequence({
+          name: Sequence.pk(TestUserModel),
+          type: "Number",
+          startWith: 0,
+          incrementBy: 1,
+          cycle: false,
+        });
+
+        const phoneSequence = await adapter.Sequence({
+          name: Sequence.pk(TestPhoneModel),
+          type: "Number",
+          startWith: 0,
+          incrementBy: 1,
+          cycle: false,
+        });
+
+        const current = (await userSequence.current()) as number;
+        const curAddress = (await sequenceModel.current()) as number;
+        const curCountry = (await sequenceCountry.current()) as number;
+        const curPhone = (await phoneSequence.current()) as number;
         created = await userRepository.create(new TestUserModel(user));
 
-        const userSeq = await sequenceRepository.read(TestUserModel.name);
-        expect(userSeq.current).toEqual(1);
+        const userSeq = await sequenceRepository.read(
+          Sequence.pk(TestUserModel)
+        );
+        expect(userSeq.current).toEqual(current + 1);
 
-        const v = TestAddressModel.name;
+        const v = Sequence.pk(TestAddressModel);
         const addressSeq = await sequenceRepository.read(v);
-        expect(addressSeq.current).toEqual(3);
+        expect(addressSeq.current).toEqual(curAddress + 1);
 
-        const countrySeq = await sequenceRepository.read(TestCountryModel.name);
-        expect(countrySeq.current).toEqual(3);
+        const countrySeq = await sequenceRepository.read(
+          Sequence.pk(TestCountryModel)
+        );
+        expect(countrySeq.current).toEqual(curCountry + 1);
 
-        const phoneSeq = await sequenceRepository.read(TestPhoneModel.name);
-        expect(phoneSeq.current).toEqual(2);
+        const phoneSeq = await sequenceRepository.read(
+          Sequence.pk(TestPhoneModel)
+        );
+        expect(phoneSeq.current).toEqual(curPhone + 2);
 
         testUser(created);
 
@@ -512,7 +564,7 @@ describe(`Complex Database`, function () {
           apartmentNumber: "NA",
           areaCode: "646e",
           city: "New York",
-          country: country.id || -1,
+          country: country.id,
         });
         const created = await testAddressModelRepository.create(address);
 
@@ -574,14 +626,14 @@ describe(`Complex Database`, function () {
 
         const created: TestUserModel = await userRepository.create(user);
 
-        expect(created?.address?.country).toEqual(
+        expect(created.address.country).toEqual(
           expect.objectContaining(country)
         );
 
-        expect((created?.phones || [])[0]).toEqual(
+        expect((created.phones || [])[0]).toEqual(
           expect.objectContaining(phone1)
         );
-        expect((created?.phones || [])[1]).toEqual(
+        expect((created.phones || [])[1]).toEqual(
           expect.objectContaining(phone2)
         );
 
