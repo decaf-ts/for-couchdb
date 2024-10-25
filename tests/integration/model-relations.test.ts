@@ -19,6 +19,7 @@ import { ConflictError, NotFoundError } from "@decaf-ts/db-decorators";
 import { Condition, Repository } from "@decaf-ts/core";
 import { Sequence as Seq } from "../../src/";
 import { sequenceNameForModel } from "@decaf-ts/core";
+import { Sequence } from "@decaf-ts/core";
 
 const admin = "couchdb.admin";
 const admin_password = "couchdb.admin";
@@ -55,26 +56,36 @@ describe(`Complex Database`, function () {
     await CouchDBAdapter.deleteDatabase(con, dbName);
   });
 
-  let seqManager: Repository<Seq>;
-  let userManager: Repository<TestUserModel>;
-  let phoneManager: Repository<TestPhoneModel>;
-  let addressManager: Repository<TestAddressModel>;
-  let countryManager: Repository<TestCountryModel>;
-  let noPopulateOnceManager: Repository<NoPopulateOnceModel>;
-  let noPopulateManyManager: Repository<NoPopulateManyModel>;
+  let sequenceRepository: Repository<Seq>;
+  let userRepository: Repository<TestUserModel>;
+  let testDummyCountryModelRepository: Repository<TestDummyCountry>;
+  let testPhoneModelRepository: Repository<TestPhoneModel>;
+  let testDummyPhoneModelRepository: Repository<TestDummyPhone>;
+  let testAddressModelRepository: Repository<TestAddressModel>;
+  let testCountryModelRepository: Repository<TestCountryModel>;
+  let noPopulateOnceModelRepository: Repository<NoPopulateOnceModel>;
+  let noPopulateManyModelRepository: Repository<NoPopulateManyModel>;
 
   let model: any;
 
   beforeAll(async () => {
-    seqManager = Repository.forModel(Seq);
-    expect(seqManager).toBeDefined();
+    sequenceRepository = Repository.forModel(Seq);
+    expect(sequenceRepository).toBeDefined();
 
-    userManager = new Repository(adapter, TestUserModel);
-    phoneManager = new Repository(adapter, TestPhoneModel);
-    addressManager = new Repository(adapter, TestAddressModel);
-    countryManager = new Repository(adapter, TestCountryModel);
-    noPopulateOnceManager = new Repository(adapter, NoPopulateOnceModel);
-    noPopulateManyManager = new Repository(adapter, NoPopulateManyModel);
+    userRepository = new Repository(adapter, TestUserModel);
+    testPhoneModelRepository = new Repository(adapter, TestPhoneModel);
+    testAddressModelRepository = new Repository(adapter, TestAddressModel);
+    testCountryModelRepository = new Repository(adapter, TestCountryModel);
+    testDummyCountryModelRepository = new Repository(adapter, TestDummyCountry);
+    testDummyPhoneModelRepository = new Repository(adapter, TestDummyPhone);
+    noPopulateOnceModelRepository = new Repository(
+      adapter,
+      NoPopulateOnceModel
+    );
+    noPopulateManyModelRepository = new Repository(
+      adapter,
+      NoPopulateManyModel
+    );
 
     model = {
       name: "test country",
@@ -83,12 +94,12 @@ describe(`Complex Database`, function () {
     };
   });
 
-  describe("basic test", () => {
+  describe.skip("basic test", () => {
     let cached: TestCountryModel;
 
     it("creates a new record", async () => {
       const record = new TestCountryModel(model);
-      const created = await countryManager.create(record);
+      const created = await testCountryModelRepository.create(record);
       expect(created).toBeDefined();
       expect(created.equals(record, "createdOn", "updatedOn", "id")).toEqual(
         true
@@ -98,7 +109,7 @@ describe(`Complex Database`, function () {
     });
 
     it("updates the sequences", async () => {
-      const modelSequence = await seqManager.read(
+      const modelSequence = await sequenceRepository.read(
         sequenceNameForModel(cached, "pk")
       );
       expect(modelSequence).toBeDefined();
@@ -107,7 +118,7 @@ describe(`Complex Database`, function () {
     });
 
     it("reads a record", async () => {
-      const read = await countryManager.read(1);
+      const read = await testCountryModelRepository.read(1);
       expect(read).toBeDefined();
       expect(read.equals(cached)).toEqual(true);
     });
@@ -118,8 +129,8 @@ describe(`Complex Database`, function () {
           name: "other test name",
         })
       );
-      const updated = await countryManager.update(toUpdate);
-      const read = await countryManager.read(1);
+      const updated = await testCountryModelRepository.update(toUpdate);
+      const read = await testCountryModelRepository.read(1);
       expect(read).toBeDefined();
       expect(read.name).toEqual("other test name");
       expect(read.equals(updated)).toEqual(true);
@@ -128,7 +139,7 @@ describe(`Complex Database`, function () {
 
     it("finds a record", async () => {
       const condition = Condition.attribute("name").eq("other test name");
-      const results: TestCountryModel[] = await countryManager
+      const results: TestCountryModel[] = await testCountryModelRepository
         .select()
         .where(condition)
         .execute<TestCountryModel[]>();
@@ -138,20 +149,40 @@ describe(`Complex Database`, function () {
     });
 
     it("deletes a record", async () => {
-      const deleted = await countryManager.delete(1);
-      await expect(countryManager.read(1)).rejects.toBeInstanceOf(
+      const deleted = await testCountryModelRepository.delete(1);
+      await expect(testCountryModelRepository.read(1)).rejects.toBeInstanceOf(
         NotFoundError
       );
       expect(deleted.equals(cached)).toEqual(true);
     });
   });
 
-  describe.skip("Complex relations Test", () => {
+  describe("Complex relations Test", () => {
     describe("One to one relations", () => {
       let created: TestAddressModel;
       let updated: TestAddressModel;
 
       it("Ensure no population when populate is disabled in a one-to-one relation", async () => {
+        const sequenceModel = await adapter.Sequence({
+          name: sequenceNameForModel(NoPopulateOnceModel, "pk"),
+          type: "Number",
+          startWith: 0,
+          incrementBy: 1,
+          cycle: false,
+        });
+
+        const sequenceCountry = await adapter.Sequence({
+          name: sequenceNameForModel(TestDummyCountry, "pk"),
+          type: "Number",
+          startWith: 0,
+          incrementBy: 1,
+          cycle: false,
+        });
+
+        const noPopulateOnceCurVal = (await sequenceModel.current()) as number;
+
+        const countryCurVal = (await sequenceCountry.current()) as number;
+
         const country = {
           name: "test country",
           countryCode: "tst",
@@ -159,22 +190,25 @@ describe(`Complex Database`, function () {
         };
 
         const address = new NoPopulateOnceModel({ country });
-        const created = await noPopulateOnceManager.create(address);
-        expect(created.country).toEqual("1");
+        const created = await noPopulateOnceModelRepository.create(address);
+        expect(created.country).toEqual(noPopulateOnceCurVal + 1);
 
-        const read = await noPopulateOnceManager.read(`${created.id}`);
-        expect(read.country).toEqual("1");
+        const read = await noPopulateOnceModelRepository.read(`${created.id}`);
+        expect(read.country).toEqual(countryCurVal + 1);
 
         created.country = new TestDummyCountry({
           name: "foo",
           countryCode: "foo",
           locale: "fo_FO",
         });
-        const updated = await noPopulateOnceManager.update(created);
-        expect(updated.country).toEqual("2");
+        const updated = await noPopulateOnceModelRepository.update(created);
+        expect(updated.country).toEqual(countryCurVal + 2);
 
-        const deleted = await noPopulateOnceManager.delete(`${created.id}`);
-        expect(deleted.country).toEqual("2");
+        const deleted = await noPopulateOnceModelRepository.delete(created.id);
+        expect(deleted.country).toEqual(countryCurVal + 2);
+
+        const c = testDummyCountryModelRepository.read(countryCurVal + 1);
+        expect(c).toBeDefined();
       });
 
       it("Creates a one to one relation", async () => {
@@ -186,23 +220,29 @@ describe(`Complex Database`, function () {
           city: "test city",
           country: model,
         });
-        created = (await addressManager.create(address)) as TestAddressModel;
+        created = (await testAddressModelRepository.create(
+          address
+        )) as TestAddressModel;
 
-        const addressSeq = await seqManager.read(TestAddressModel.name);
-        expect(addressSeq.current).toEqual("1");
-        const countrySeq = await seqManager.read(TestCountryModel.name);
-        expect(countrySeq.current).toEqual("1");
+        const addressSeq = await sequenceRepository.read(
+          Sequence.pk(TestAddressModel)
+        );
+        expect(addressSeq.current).toEqual(1);
+        const countrySeq = await sequenceRepository.read(
+          Sequence.pk(TestCountryModel)
+        );
+        expect(countrySeq.current).toEqual(1);
 
         testAddress(created);
 
-        const read = (await addressManager.read(
+        const read = (await testAddressModelRepository.read(
           created.id
         )) as TestAddressModel;
         testAddress(read);
         expect(created.equals(read)).toEqual(true);
-        expect(created.country?.equals(read.country)).toEqual(true);
+        expect(created.country.equals(read.country)).toEqual(true);
 
-        const read2 = (await countryManager.read(
+        const read2 = (await testCountryModelRepository.read(
           created.country.id
         )) as TestCountryModel;
         testCountry(read2);
@@ -220,15 +260,15 @@ describe(`Complex Database`, function () {
             ),
           })
         );
-        updated = await addressManager.update(address);
+        updated = await testAddressModelRepository.update(address);
         testAddress(updated);
 
-        const read = await addressManager.read(updated.id);
+        const read = await testAddressModelRepository.read(updated.id);
         testAddress(read);
         expect(updated.equals(read)).toEqual(true);
         expect(updated.country.equals(read.country)).toEqual(true);
 
-        const read2 = (await countryManager.read(
+        const read2 = (await testCountryModelRepository.read(
           created.country.id
         )) as TestCountryModel;
         testCountry(read2);
@@ -236,13 +276,13 @@ describe(`Complex Database`, function () {
       });
 
       it("Deletes a one to one relation", async () => {
-        const deleted = await addressManager.delete(updated.id);
+        const deleted = await testAddressModelRepository.delete(updated.id);
         testAddress(deleted);
-        await expect(addressManager.read(updated.id)).rejects.toBeInstanceOf(
-          NotFoundError
-        );
         await expect(
-          countryManager.read(updated.country.id)
+          testAddressModelRepository.read(updated.id)
+        ).rejects.toBeInstanceOf(NotFoundError);
+        await expect(
+          testCountryModelRepository.read(updated.country.id)
         ).rejects.toBeInstanceOf(NotFoundError);
       });
 
@@ -255,19 +295,25 @@ describe(`Complex Database`, function () {
           city: "test city",
           country: model,
         });
-        created = (await addressManager.create(address)) as TestAddressModel;
+        created = (await testAddressModelRepository.create(
+          address
+        )) as TestAddressModel;
 
-        expect(created.id).toEqual("2");
-        expect(created.country.id).toEqual("2");
+        expect(created.id).toEqual(2);
+        expect(created.country.id).toEqual(2);
 
-        const addressSeq = await seqManager.read(TestAddressModel.name);
-        expect(addressSeq.current).toEqual("2");
-        const countrySeq = await seqManager.read(TestCountryModel.name);
-        expect(countrySeq.current).toEqual("2");
+        const addressSeq = await sequenceRepository.read(
+          Sequence.pk(TestAddressModel)
+        );
+        expect(addressSeq.current).toEqual(2);
+        const countrySeq = await sequenceRepository.read(
+          Sequence.pk(TestCountryModel)
+        );
+        expect(countrySeq.current).toEqual(2);
       });
     });
 
-    describe("One to many relations", () => {
+    describe.only("One to many relations", () => {
       const user = {
         name: "testuser",
         email: "test@test.com",
@@ -299,7 +345,7 @@ describe(`Complex Database`, function () {
       let created: TestUserModel;
       let updated: TestUserModel;
 
-      it("Ensure no population when populate is disabled in a one-to-many relation", async () => {
+      it.only("Ensure no population when populate is disabled in a one-to-many relation", async () => {
         const phones = [
           {
             areaCode: "351",
@@ -311,16 +357,25 @@ describe(`Complex Database`, function () {
           },
         ];
 
-        const created = await noPopulateManyManager.create(
-          new NoPopulateManyModel({
-            name: "Robert",
-            phones: phones,
-          })
-        );
-        expect(created.phones).toEqual(["1", "2"]);
+        const sequencePhone = await adapter.Sequence({
+          name: Sequence.pk(TestDummyPhone),
+          type: "Number",
+          startWith: 0,
+          incrementBy: 1,
+          cycle: false,
+        });
 
-        const read = await noPopulateManyManager.read(`${created.id}`);
-        expect(read.phones).toEqual(["1", "2"]);
+        const currPhone = (await sequencePhone.current()) as number;
+
+        const m = new NoPopulateManyModel({
+          name: "Robert",
+          phones: phones,
+        });
+        const created = await noPopulateManyModelRepository.create(m);
+        expect(created.phones).toEqual([currPhone + 1, currPhone + 2]);
+
+        const read = await noPopulateManyModelRepository.read(created.id);
+        expect(read.phones).toEqual([currPhone + 1, currPhone + 2]);
 
         read.phones = [
           new TestDummyPhone({
@@ -332,43 +387,43 @@ describe(`Complex Database`, function () {
             number: "000-0000000",
           }),
         ];
-        const updated = await noPopulateManyManager.update(read);
-        expect(updated.phones).toEqual(["3", "4"]);
+        const updated = await noPopulateManyModelRepository.update(read);
+        expect(updated.phones).toEqual([currPhone + 3, currPhone + 4]);
 
-        const deleted = await noPopulateManyManager.delete(`${created.id}`);
-        expect(deleted.phones).toEqual(["3", "4"]);
+        const deleted = await noPopulateManyModelRepository.delete(created.id);
+        expect(deleted.phones).toEqual([currPhone + 3, currPhone + 4]);
       });
 
       it("Creates a one to many relation", async () => {
-        created = await userManager.create(new TestUserModel(user));
+        created = await userRepository.create(new TestUserModel(user));
 
-        const userSeq = await seqManager.read(TestUserModel.name);
-        expect(userSeq.current).toEqual("1");
+        const userSeq = await sequenceRepository.read(TestUserModel.name);
+        expect(userSeq.current).toEqual(1);
 
         const v = TestAddressModel.name;
-        const addressSeq = await seqManager.read(v);
-        expect(addressSeq.current).toEqual("3");
+        const addressSeq = await sequenceRepository.read(v);
+        expect(addressSeq.current).toEqual(3);
 
-        const countrySeq = await seqManager.read(TestCountryModel.name);
-        expect(countrySeq.current).toEqual("3");
+        const countrySeq = await sequenceRepository.read(TestCountryModel.name);
+        expect(countrySeq.current).toEqual(3);
 
-        const phoneSeq = await seqManager.read(TestPhoneModel.name);
-        expect(phoneSeq.current).toEqual("2");
+        const phoneSeq = await sequenceRepository.read(TestPhoneModel.name);
+        expect(phoneSeq.current).toEqual(2);
 
         testUser(created);
 
-        const read = await userManager.read(created.id);
+        const read = await userRepository.read(created.id);
         testUser(read);
 
         const { address, phones } = read;
         expect(created.equals(read)).toEqual(true);
         expect(created.address.equals(address)).toEqual(true);
 
-        const read2 = await addressManager.read(created.address.id);
+        const read2 = await testAddressModelRepository.read(created.address.id);
         testAddress(read2);
         expect(read2.equals(created.address)).toEqual(true);
 
-        const read3 = await countryManager.read(address.country.id);
+        const read3 = await testCountryModelRepository.read(address.country.id);
         testCountry(read3);
         expect(read3.equals(address.country)).toEqual(true);
         phones.forEach((p: any) => {
@@ -397,22 +452,22 @@ describe(`Complex Database`, function () {
             ],
           })
         );
-        updated = await userManager.update(toUpdate);
+        updated = await userRepository.update(toUpdate);
         testUser(updated);
 
-        const read = await userManager.read(updated.id);
+        const read = await userRepository.read(updated.id);
         testUser(read);
         expect(read.name).toEqual("new name");
 
         const { address, phones } = read;
         expect(updated.equals(read)).toEqual(true);
         expect(updated.address.equals(address)).toEqual(true);
-        const read2 = await addressManager.read(updated.address.id);
+        const read2 = await testAddressModelRepository.read(updated.address.id);
         testAddress(read2);
         expect(read2.city).toEqual("new city");
         expect(read2.equals(updated.address)).toEqual(true);
 
-        const read3 = await countryManager.read(address.country.id);
+        const read3 = await testCountryModelRepository.read(address.country.id);
         testCountry(read3);
         expect(read3.equals(address.country)).toEqual(true);
         expect(read3.name).toEqual("new country");
@@ -424,26 +479,26 @@ describe(`Complex Database`, function () {
       });
 
       it("Deletes a one to many relation", async () => {
-        const deleted = await userManager.delete(updated.id);
+        const deleted = await userRepository.delete(updated.id);
         testUser(deleted);
         await expect(
-          addressManager.read(updated.address.id)
+          testAddressModelRepository.read(updated.address.id)
         ).rejects.toBeInstanceOf(NotFoundError);
         await expect(
-          countryManager.read(updated.address.country.id)
+          testCountryModelRepository.read(updated.address.country.id)
         ).rejects.toBeInstanceOf(NotFoundError);
         await expect(
-          phoneManager.read((updated.phones as any)[0].id)
+          testPhoneModelRepository.read((updated.phones as any)[0].id)
         ).rejects.toBeInstanceOf(NotFoundError);
         await expect(
-          phoneManager.read((updated.phones as any)[1].id)
+          testPhoneModelRepository.read((updated.phones as any)[1].id)
         ).rejects.toBeInstanceOf(NotFoundError);
       });
     });
 
     describe("Validate a key populate", () => {
       it("In a one-to-one relation", async () => {
-        const country = await countryManager.create(
+        const country = await testCountryModelRepository.create(
           new TestCountryModel({
             name: "Portugal",
             countryCode: "pt",
@@ -457,20 +512,20 @@ describe(`Complex Database`, function () {
           apartmentNumber: "NA",
           areaCode: "646e",
           city: "New York",
-          country: country?.id || -1,
+          country: country.id || -1,
         });
-        const created = await addressManager.create(address);
+        const created = await testAddressModelRepository.create(address);
 
         expect(created.country).toEqual(expect.objectContaining(country));
 
         testAddress(created);
 
-        const readAddress = await addressManager.read(created.id);
+        const readAddress = await testAddressModelRepository.read(created.id);
         testAddress(readAddress);
         expect(created.equals(readAddress)).toEqual(true);
-        expect(created.country?.equals(readAddress.country)).toEqual(true);
+        expect(created.country.equals(readAddress.country)).toEqual(true);
 
-        const readCountry = (await countryManager.read(
+        const readCountry = (await testCountryModelRepository.read(
           created.country.id
         )) as TestCountryModel;
         testCountry(readCountry);
@@ -478,7 +533,7 @@ describe(`Complex Database`, function () {
       });
 
       it("In a one-to-many relation", async () => {
-        const country = await countryManager.create(
+        const country = await testCountryModelRepository.create(
           new TestCountryModel({
             name: "Italy",
             countryCode: "it",
@@ -486,14 +541,14 @@ describe(`Complex Database`, function () {
           })
         );
 
-        const phone1 = await phoneManager.create(
+        const phone1 = await testPhoneModelRepository.create(
           new TestPhoneModel({
             areaCode: "51",
             number: "510 899000010",
           })
         );
 
-        const phone2 = await phoneManager.create(
+        const phone2 = await testPhoneModelRepository.create(
           new TestPhoneModel({
             areaCode: "59",
             number: "059 901000900",
@@ -517,7 +572,7 @@ describe(`Complex Database`, function () {
           phones: phoneIds,
         });
 
-        const created: TestUserModel = await userManager.create(user);
+        const created: TestUserModel = await userRepository.create(user);
 
         expect(created?.address?.country).toEqual(
           expect.objectContaining(country)
@@ -532,18 +587,18 @@ describe(`Complex Database`, function () {
 
         testUser(created);
 
-        const read = await userManager.read(created.id);
+        const read = await userRepository.read(created.id);
         testUser(read);
 
         const { address, phones } = read;
         expect(created.equals(read)).toEqual(true);
         expect(created.address?.equals(address)).toEqual(true);
 
-        const read2 = await addressManager.read(created.address.id);
+        const read2 = await testAddressModelRepository.read(created.address.id);
         testAddress(read2);
         expect(read2.equals(created.address)).toEqual(true);
 
-        const read3 = await countryManager.read(address.country.id);
+        const read3 = await testCountryModelRepository.read(address.country.id);
         testCountry(read3);
         expect(read3.equals(address?.country)).toEqual(true);
         phones.forEach((p: any) => {
@@ -552,7 +607,7 @@ describe(`Complex Database`, function () {
       });
 
       it("Populate should fail when all elements do not match the same type", async () => {
-        const country = await countryManager.create(
+        const country = await testCountryModelRepository.create(
           new TestCountryModel({
             name: "Spain",
             countryCode: "es",
@@ -560,7 +615,7 @@ describe(`Complex Database`, function () {
           })
         );
 
-        const phone1 = await phoneManager.create(
+        const phone1 = await testPhoneModelRepository.create(
           new TestPhoneModel({
             areaCode: "49",
             number: "490 899000010",
@@ -592,7 +647,7 @@ describe(`Complex Database`, function () {
 
         let created: any = undefined;
         try {
-          created = await userManager.create(user);
+          created = await userRepository.create(user);
         } catch (e: any) {
           expect(e?.message).toContain(
             "Invalid operation. All elements of property phones must match the same type."

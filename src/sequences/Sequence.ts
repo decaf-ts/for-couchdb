@@ -20,11 +20,13 @@ import { parseSequenceValue } from "./utils";
  *
  * @category Sequences
  */
-export class CouchDBSequence implements Sequence {
+export class CouchDBSequence extends Sequence {
   @repository(Seq)
   protected repo!: IRepository<Seq>;
 
-  constructor(protected readonly options: SequenceOptions) {}
+  constructor(options: SequenceOptions) {
+    super(options);
+  }
 
   /**
    * @summary Retrieves the current value for the sequence

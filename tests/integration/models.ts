@@ -127,13 +127,13 @@ export class TestUserModel extends BaseModel {
 @model()
 export class TestDummyCountry extends BaseModel {
   @pk({ type: "Number" })
-  id?: string = undefined;
+  id!: number;
 
   @required()
-  name?: string = undefined;
+  name!: string;
 
   @required()
-  countryCode?: string = undefined;
+  countryCode!: string;
 
   constructor(m?: ModelArg<TestDummyCountry>) {
     super(m);
@@ -143,7 +143,7 @@ export class TestDummyCountry extends BaseModel {
 @model()
 export class NoPopulateOnceModel extends BaseModel {
   @pk({ type: "Number" })
-  id?: string = undefined;
+  id!: number;
 
   @oneToOne(
     TestDummyCountry,
@@ -151,7 +151,7 @@ export class NoPopulateOnceModel extends BaseModel {
     false
   )
   @required()
-  country?: TestDummyCountry = undefined;
+  country!: TestDummyCountry;
 
   constructor(m?: ModelArg<NoPopulateOnceModel>) {
     super(m);
@@ -161,11 +161,11 @@ export class NoPopulateOnceModel extends BaseModel {
 @model()
 export class TestDummyPhone extends BaseModel {
   @pk({ type: "Number" })
-  id?: string = undefined;
+  id!: number;
   @required()
-  areaCode?: string = undefined;
+  areaCode!: string;
   @required()
-  number?: string = undefined;
+  number!: string;
 
   constructor(m?: ModelArg<TestDummyPhone>) {
     super(m);
@@ -175,11 +175,11 @@ export class TestDummyPhone extends BaseModel {
 @model()
 export class NoPopulateManyModel extends BaseModel {
   @pk({ type: "Number" })
-  id?: string = undefined;
+  id!: number;
 
   @required()
   @index()
-  name?: string = undefined;
+  name!: string;
 
   @oneToMany(
     TestDummyPhone,
@@ -188,7 +188,7 @@ export class NoPopulateManyModel extends BaseModel {
   )
   @required()
   @minlength(1)
-  phones?: TestDummyPhone[] = undefined;
+  phones!: TestDummyPhone[];
 
   constructor(m?: ModelArg<NoPopulateManyModel>) {
     super(m);
@@ -206,7 +206,7 @@ export function testCountry(country: TestCountryModel) {
 export function testAddress(address: TestAddressModel) {
   expect(address).toBeDefined();
   expect(address).toBeInstanceOf(TestAddressModel);
-  expect(address?.id).toBeDefined();
+  expect(address.id).toBeDefined();
   expect(address.createdOn).toBeDefined();
   expect(address.updatedOn).toBeDefined();
   testCountry(address.country as TestCountryModel);
@@ -214,7 +214,7 @@ export function testAddress(address: TestAddressModel) {
 
 export function testPhone(p: TestPhoneModel) {
   expect(p).toBeInstanceOf(TestPhoneModel);
-  expect(p?.id).toBeDefined();
+  expect(p.id).toBeDefined();
   expect(p.createdOn).toBeDefined();
   expect(p.updatedOn).toBeDefined();
 }
@@ -222,7 +222,7 @@ export function testPhone(p: TestPhoneModel) {
 export function testUser(user: TestUserModel) {
   expect(user).toBeDefined();
   expect(user).toBeInstanceOf(TestUserModel);
-  expect(user?.id).toBeDefined();
+  expect(user.id).toBeDefined();
   expect(user.createdOn).toBeDefined();
   expect(user.updatedOn).toBeDefined();
 
@@ -231,6 +231,6 @@ export function testUser(user: TestUserModel) {
   testAddress(address as TestAddressModel);
 
   expect(phones).toBeDefined();
-  expect(phones?.length).toBeGreaterThan(1);
-  phones?.forEach((p) => testPhone(p));
+  expect(phones.length).toBeGreaterThan(1);
+  phones.forEach((p) => testPhone(p));
 }
