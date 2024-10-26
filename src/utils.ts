@@ -32,6 +32,12 @@ export function wrapDocumentScope(
       },
     });
   });
+  Object.defineProperty(db, CouchDBKeys.NATIVE, {
+    enumerable: false,
+    configurable: false,
+    writable: false,
+    value: con,
+  });
   return db;
 }
 

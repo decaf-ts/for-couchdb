@@ -1,5 +1,4 @@
 import {
-  Adapter,
   ClauseFactory,
   Condition,
   FromClause,
@@ -30,9 +29,10 @@ import { CouchDBWhereClause } from "./WhereClause";
 import { CouchDBSelectClause } from "./SelectClause";
 import { CouchDBValuesClause } from "./ValuesClause";
 import { CouchDBOperator } from "./constants";
+import { CouchDBAdapter } from "../adapter";
 
 export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
-  constructor(adapter: Adapter<DocumentScope<any>, MangoQuery>) {
+  constructor(adapter: CouchDBAdapter) {
     super(adapter);
   }
 
@@ -64,7 +64,7 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
 
   insert<M extends Model>(): InsertClause<MangoQuery, M> {
     return new CouchDBInsertClause({
-      statement: new CouchDBStatement(this.adapter),
+      statement: new CouchDBStatement(this.adapter as CouchDBAdapter),
     });
   }
 

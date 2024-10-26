@@ -27,6 +27,7 @@ import {
   DocumentBulkResponse,
   MangoOperator,
   CreateIndexResponse,
+  DatabaseSessionResponse,
 } from "nano";
 import * as Nano from "nano";
 import { CouchDBKeys, reservedAttributes } from "./constants";
@@ -168,10 +169,26 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     }
   }
 
-  async raw<V>(rawInput: MangoQuery): Promise<V> {
+  async user() {
+    try {
+      const user: DatabaseSessionResponse = await (
+        (this.native as any)[CouchDBKeys.NATIVE] as ServerScope
+      ).session();
+      return user.userCtx.name;
+    } catch (e: any) {
+      throw this.parseError(e);
+    }
+  }
+
+  async raw<V>(
+    rawInput: MangoQuery,
+    process = true,
+    ...args: any[]
+  ): Promise<V> {
     try {
       const response: MangoResponse<V> = await this.native.find(rawInput);
-      return response.docs as V;
+      if (process) return response.docs as V;
+      return response as V;
     } catch (e: any) {
       throw this.parseError(e);
     }
@@ -405,7 +422,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     dbName: string,
     user: string,
     pass: string,
-    roles: string[] = []
+    roles: string[] = ["reader", "writer"]
   ) {
     const users = await con.db.use("_users");
     const usr = {
@@ -430,13 +447,13 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
         // },
         body: {
           admins: {
-            names: [],
-            roles: [],
-          },
-          members: {
             names: [user],
-            roles: roles,
+            roles: ["admin"],
           },
+          // members: {
+          //   names: [user],
+          //   roles: roles,
+          // },
         },
       });
       if (!security.ok)
