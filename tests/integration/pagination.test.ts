@@ -1,8 +1,8 @@
-import { Model, pattern, required } from "@decaf-ts/decorator-validation";
+import { Model } from "@decaf-ts/decorator-validation";
 import { ServerScope } from "nano";
 import { CouchDBAdapter, wrapDocumentScope } from "../../src";
-import { ConflictError } from "@decaf-ts/db-decorators";
-import { pk, Repository } from "@decaf-ts/core";
+import { ConflictError, InternalError } from "@decaf-ts/db-decorators";
+import { OrderDirection, Repository } from "@decaf-ts/core";
 import { TestCountryModel } from "./models";
 
 const admin = "couchdb.admin";
@@ -21,6 +21,9 @@ describe(`Pagination`, function () {
   let adapter: CouchDBAdapter;
   let repo: Repository<TestCountryModel>;
 
+  let created: TestCountryModel[];
+  const size = 100;
+
   beforeAll(async () => {
     con = await CouchDBAdapter.connect(admin, admin_password, dbHost);
     expect(con).toBeDefined();
@@ -36,16 +39,6 @@ describe(`Pagination`, function () {
       "nano"
     );
     repo = new Repository(adapter, TestCountryModel);
-  });
-
-  afterAll(async () => {
-    await CouchDBAdapter.deleteDatabase(con, dbName);
-  });
-
-  let created: TestCountryModel[];
-  const size = 100;
-
-  it("initializes the database", async () => {
     const models = Object.keys(new Array(size).fill(0)).map(
       (i) =>
         new TestCountryModel({
@@ -58,6 +51,34 @@ describe(`Pagination`, function () {
     created = await repo.createAll(models);
     expect(created).toBeDefined();
     expect(created.length).toEqual(size);
+  });
+
+  afterAll(async () => {
+    await CouchDBAdapter.deleteDatabase(con, dbName);
+  });
+
+  let selected: TestCountryModel[];
+  it.skip("Fails to sort in an unindexed property", async () => {
+    await expect(
+      repo
+        .select()
+        .orderBy(["id", OrderDirection.ASC])
+        .execute<TestCountryModel[]>()
+    ).rejects.toThrow(InternalError);
+  });
+
+  it("indexes de database properly according to defined indexes", async () => {
+    await adapter.initialize();
+  });
+
+  it("Sorts via defined property when there is an index", async () => {
+    selected = await repo
+      .select()
+      .orderBy(["id", OrderDirection.ASC])
+      .execute<TestCountryModel[]>();
+    expect(selected).toBeDefined();
+    expect(selected.length).toEqual(created.length);
+    expect(created.every((c, i) => c.equals(selected[i]))).toEqual(true);
   });
 
   it("paginates", async () => {

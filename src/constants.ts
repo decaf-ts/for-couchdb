@@ -7,4 +7,5 @@ export const CouchDBKeys = {
   TABLE: "??table",
   DDOC: "ddoc",
   NATIVE: "__native",
+  INDEX: "index",
 };

@@ -26,8 +26,8 @@ import {
   MangoSelector,
   DocumentBulkResponse,
   MangoOperator,
-  CreateIndexResponse,
   DatabaseSessionResponse,
+  CreateIndexRequest,
 } from "nano";
 import * as Nano from "nano";
 import { CouchDBKeys, reservedAttributes } from "./constants";
@@ -42,9 +42,9 @@ import { CouchDBStatement } from "./query/Statement";
 import { Factory } from "./query";
 import { translateOperators } from "./query/translate";
 import { CouchDBSequence } from "./sequences/Sequence";
-import { Model } from "@decaf-ts/decorator-validation";
-import { generateIndexDoc } from "./utils";
+import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
+import { generateIndexes } from "./indexes/generator";
 
 export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
   private factory?: Factory;
@@ -113,59 +113,16 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
 
   async initialize(...args: any[]): Promise<void> {
     const managedModels = Adapter.models(this.flavour);
-    return this.index(...managedModels.map((m) => new m()));
+    return this.index(...managedModels);
   }
 
-  async index<M extends Model>(...models: M[]): Promise<any> {
-    for (const model of models) {
-      const tableName = Repository.table(model);
-      const indexedProperties: Record<
-        string,
-        Record<string, IndexMetadata>
-      > = Repository.indexes(model);
-      const keys = Object.keys(indexedProperties);
-      if (keys.length)
-        for (const property of keys) {
-          for (const index of Object.keys(indexedProperties[property])) {
-            try {
-              const { compositions, directions } =
-                indexedProperties[property][index];
-              const columnName = Repository.column(model, property);
-
-              async function storeIndex(
-                this: CouchDBAdapter,
-                compositions?: string[],
-                directions?: OrderDirection
-              ) {
-                const doc = generateIndexDoc(
-                  columnName,
-                  tableName,
-                  compositions,
-                  directions
-                );
-                const res = await this.native.createIndex(doc);
-                const { result, id, name } = res;
-                if (result === "existing")
-                  throw new ConflictError(
-                    `Index for table ${tableName} column ${property} named ${name} with id ${id}`
-                  );
-              }
-              await storeIndex.call(
-                this,
-                compositions,
-                directions as OrderDirection
-              );
-              if (!compositions && !directions) {
-                await storeIndex.call(this, undefined, OrderDirection.ASC);
-                await storeIndex.call(this, undefined, OrderDirection.DSC);
-              }
-            } catch (e: any) {
-              if (e instanceof ConflictError) continue;
-              if (e instanceof IndexError) throw e;
-              throw new InternalError(e);
-            }
-          }
-        }
+  async index<M extends Model>(...models: Constructor<M>[]): Promise<any> {
+    const indexes: CreateIndexRequest[] = generateIndexes(models);
+    for (const index of indexes) {
+      const res = await this.native.createIndex(index);
+      const { result, id, name } = res;
+      if (result === "existing")
+        throw new ConflictError(`Index for table ${name} with id ${id}`);
     }
   }
 
@@ -448,12 +405,12 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
         body: {
           admins: {
             names: [user],
-            roles: ["admin"],
+            roles: [],
           },
-          // members: {
-          //   names: [user],
-          //   roles: roles,
-          // },
+          members: {
+            names: [user],
+            roles: roles,
+          },
         },
       });
       if (!security.ok)

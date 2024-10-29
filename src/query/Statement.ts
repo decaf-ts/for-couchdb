@@ -12,6 +12,19 @@ export class CouchDBStatement extends Statement<MangoQuery> {
     super(adapter);
   }
 
+  /**
+   * @inheritDoc
+   */
+  async execute<Y>(): Promise<Y> {
+    try {
+      const query: MangoQuery = this.build();
+      if (!query.limit) query.limit = Number.MAX_SAFE_INTEGER;
+      return this.raw(query);
+    } catch (e: any) {
+      throw new InternalError(e);
+    }
+  }
+
   async paginate<R>(size: number): Promise<Paginator<R, MangoQuery>> {
     try {
       const query: MangoQuery = this.build();

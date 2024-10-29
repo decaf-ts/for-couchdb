@@ -1,7 +1,6 @@
 import {
   Paginator,
   PagingError,
-  Repository,
   SequenceOptions,
   Statement,
 } from "@decaf-ts/core";
