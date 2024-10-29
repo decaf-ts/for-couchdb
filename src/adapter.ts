@@ -11,8 +11,6 @@ import {
   Condition,
   ConnectionError,
   Repository,
-  OrderDirection,
-  IndexMetadata,
 } from "@decaf-ts/core";
 import {
   MangoQuery,
@@ -111,7 +109,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     return new CouchDBSequence(options);
   }
 
-  async initialize(...args: any[]): Promise<void> {
+  async initialize(): Promise<void> {
     const managedModels = Adapter.models(this.flavour);
     return this.index(...managedModels);
   }
@@ -137,11 +135,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     }
   }
 
-  async raw<V>(
-    rawInput: MangoQuery,
-    process = true,
-    ...args: any[]
-  ): Promise<V> {
+  async raw<V>(rawInput: MangoQuery, process = true): Promise<V> {
     try {
       const response: MangoResponse<V> = await this.native.find(rawInput);
       if (process) return response.docs as V;

@@ -5,11 +5,10 @@ import {
   Repository,
 } from "@decaf-ts/core";
 import { CouchDBKeys } from "../constants";
-import { DBKeys, DefaultSeparator } from "@decaf-ts/db-decorators";
+import { DefaultSeparator } from "@decaf-ts/db-decorators";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
 
 import { CreateIndexRequest } from "nano";
-import { getAllPropertyDecorators } from "@decaf-ts/reflection";
 import { CouchDBOperator } from "../query/constants";
 
 function generateIndexName(

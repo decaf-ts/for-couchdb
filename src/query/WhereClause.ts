@@ -45,7 +45,7 @@ export class CouchDBWhereClause extends WhereClause<MangoQuery> {
           ];
           query.selector = condition;
           break;
-        case CouchDBGroupOperator.OR:
+        case CouchDBGroupOperator.OR: {
           const s: Record<any, any> = {};
           s[CouchDBGroupOperator.AND] = [
             condition,
@@ -57,6 +57,7 @@ export class CouchDBWhereClause extends WhereClause<MangoQuery> {
           ];
           query.selector = s;
           break;
+        }
         default:
           throw new Error("This should be impossible");
       }

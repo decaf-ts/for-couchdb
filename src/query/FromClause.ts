@@ -2,7 +2,6 @@ import { FromClause } from "@decaf-ts/core";
 import { MangoQuery } from "nano";
 import { ModelArg, Model, Constructor } from "@decaf-ts/decorator-validation";
 import { CouchDBKeys } from "../constants";
-import { CouchDBOperator } from "./constants";
 import { Repository } from "@decaf-ts/core";
 
 // noinspection JSAnnotator
