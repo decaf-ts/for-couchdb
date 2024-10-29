@@ -5,11 +5,25 @@ import {
   Statement,
 } from "@decaf-ts/core";
 import { MangoQuery, MangoResponse } from "nano";
-import { DefaultSeparator, findPrimaryKey } from "@decaf-ts/db-decorators";
+import {
+  DefaultSeparator,
+  findPrimaryKey,
+  InternalError,
+} from "@decaf-ts/db-decorators";
 import { parseSequenceValue } from "../sequences/utils";
 
 export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
   private bookMark?: string;
+
+  get total(): number {
+    throw new InternalError(`The total pages api is not available for couchdb`);
+  }
+
+  get count(): number {
+    throw new InternalError(
+      `The record count api is not available for couchdb`
+    );
+  }
 
   constructor(
     statement: Statement<MangoQuery>,
@@ -23,7 +37,7 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
     const query: MangoQuery = Object.assign({}, rawStatement);
     if (query.limit) this.limit = query.limit;
 
-    query.limit = this.size + 1;
+    query.limit = this.size;
 
     return query;
   }
@@ -31,13 +45,13 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
   async page(page: number = 1, ...args: any[]): Promise<V[]> {
     const statement = Object.assign({}, this.statement);
     const target = this.stat.getTarget();
-    if (!this._recordCount || !this._totalPages) {
-      // this._recordCount = await this.adapter
-      //   .Query()
-      //   .count()
-      //   .from(target)
-      //   .execute<number>();
-    }
+    // if (!this._recordCount || !this._totalPages) {
+    //   // this._recordCount = await this.adapter
+    //   //   .Query()
+    //   //   .count()
+    //   //   .from(target)
+    //   //   .execute<number>();
+    // }
 
     if (page !== 1) {
       if (!this.bookMark)
@@ -76,6 +90,7 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
             );
           });
     this.bookMark = bookmark;
-    return results.splice(0, this.size);
+    this._currentPage = page;
+    return results;
   }
 }

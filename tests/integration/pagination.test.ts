@@ -2,7 +2,7 @@ import { Model } from "@decaf-ts/decorator-validation";
 import { ServerScope } from "nano";
 import { CouchDBAdapter, wrapDocumentScope } from "../../src";
 import { ConflictError, InternalError } from "@decaf-ts/db-decorators";
-import { OrderDirection, Repository } from "@decaf-ts/core";
+import { OrderDirection, Paginator, Repository } from "@decaf-ts/core";
 import { TestCountryModel } from "./models";
 
 const admin = "couchdb.admin";
@@ -82,7 +82,10 @@ describe(`Pagination`, function () {
   });
 
   it("paginates", async () => {
-    const paginator = await repo.select().paginate<TestCountryModel>(10);
+    const paginator: Paginator<TestCountryModel, any> = await repo
+      .select()
+      .orderBy(["id", OrderDirection.DSC])
+      .paginate<TestCountryModel>(10);
 
     expect(paginator).toBeDefined();
 
@@ -91,10 +94,37 @@ describe(`Pagination`, function () {
 
     const page1 = await paginator.page();
     expect(page1).toBeDefined();
-    expect(page1).toEqual(
-      expect.arrayContaining(
-        created.slice((paginator.current - 1) * size, size)
-      )
+
+    const ids = [100, 99, 98, 97, 96, 95, 94, 93, 92, 91];
+
+    expect(page1.map((el: any) => el["id"])).toEqual(
+      expect.arrayContaining(ids)
     );
+
+    expect(paginator.current).toEqual(1);
+
+    const page2 = await paginator.next();
+    expect(page2).toBeDefined();
+
+    expect(page2.map((el: any) => el["id"])).toEqual(
+      expect.arrayContaining(ids.map((e) => e - 10))
+    );
+
+    const page3 = await paginator.next();
+    expect(page3).toBeDefined();
+
+    expect(page3.map((el: any) => el["id"])).toEqual(
+      expect.arrayContaining(ids.map((e) => e - 20))
+    );
+
+    const page4 = await paginator.next();
+    expect(page4).toBeDefined();
+
+    expect(page4.map((el: any) => el["id"])).toEqual(
+      expect.arrayContaining(ids.map((e) => e - 30))
+    );
+
+    expect(() => paginator.count).toThrow();
+    expect(() => paginator.total).toThrow();
   });
 });

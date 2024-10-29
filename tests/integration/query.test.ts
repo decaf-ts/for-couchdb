@@ -57,7 +57,7 @@ describe("Queries", () => {
   });
 
   afterAll(async () => {
-    // await CouchDBAdapter.deleteDatabase(con, dbName);
+    await CouchDBAdapter.deleteDatabase(con, dbName);
   });
 
   @uses("nano")
@@ -68,7 +68,7 @@ describe("Queries", () => {
 
     @required()
     @min(18)
-    @index(undefined, [OrderDirection.DSC, OrderDirection.ASC])
+    @index([OrderDirection.DSC, OrderDirection.ASC])
     age!: number;
 
     @required()

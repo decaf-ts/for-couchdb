@@ -43,9 +43,9 @@ export function generateIndexes<M extends Model>(
   models.forEach((m) => {
     const ind: Record<string, IndexMetadata> = Repository.indexes(m);
     Object.entries(ind).forEach(([key, value]) => {
+      const k = Object.keys(value)[0];
       // eslint-disable-next-line prefer-const
-      let { directions, compositions } = (value as { index: IndexMetadata })
-        .index;
+      let { directions, compositions } = (value as any)[k];
       const tableName = Repository.table(m);
       compositions = compositions || [];
 
@@ -54,7 +54,6 @@ export function generateIndexes<M extends Model>(
           tableName,
           key,
           ...(compositions as []),
-          ...(sort ? [sort] : []),
           PersistenceKeys.INDEX,
         ].join(DefaultSeparator);
 
