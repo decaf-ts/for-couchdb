@@ -230,7 +230,19 @@ export abstract class CouchDBAdapter extends Adapter<
       { keys: ids.map((id) => this.generateId(tableName, id as any)) },
       {}
     );
-    return results.rows;
+    return results.rows.map((r) => {
+      if ((r as any).error) throw new InternalError((r as any).error);
+      if ((r as any).doc) {
+        const res = Object.assign({}, (r as any).doc);
+        Object.defineProperty(res, PersistenceKeys.METADATA, {
+          enumerable: false,
+          writable: false,
+          value: (r as any).doc[CouchDBKeys.REV],
+        });
+        return res;
+      }
+      throw new InternalError("Should be impossible");
+    });
   }
 
   async update(
@@ -280,7 +292,13 @@ export abstract class CouchDBAdapter extends Adapter<
       const record: Record<string, any> = {};
       record[CouchDBKeys.TABLE] = tableName;
       record[CouchDBKeys.ID] = this.generateId(tableName, id);
+      const rev = models[count][PersistenceKeys.METADATA];
+      if (!rev)
+        throw new InternalError(
+          `No revision number found for record with id ${id}`
+        );
       Object.assign(record, models[count]);
+      record[CouchDBKeys.REV] = rev;
       return record;
     });
     let response: DocumentBulkResponse[];
@@ -328,13 +346,36 @@ export abstract class CouchDBAdapter extends Adapter<
     return record;
   }
 
-  deleteAll(
+  async deleteAll(
     tableName: string,
-    ids: (string | number | bigint)[],
-    ...args: any[]
+    ids: (string | number | bigint)[]
   ): Promise<Record<string, any>[]> {
-    // TODO
-    return super.deleteAll(tableName, ids, ...args);
+    const results = await this.native.fetch(
+      { keys: ids.map((id) => this.generateId(tableName, id as any)) },
+      {}
+    );
+    const deletion: DocumentBulkResponse[] = await this.native.bulk({
+      docs: results.rows.map((r) => {
+        (r as any)[CouchDBKeys.DELETED] = true;
+        return r;
+      }),
+    });
+    deletion.forEach((d: DocumentBulkResponse) => {
+      if (d.error) console.error(d.error);
+    });
+    return results.rows.map((r) => {
+      if ((r as any).error) throw new InternalError((r as any).error);
+      if ((r as any).doc) {
+        const res = Object.assign({}, (r as any).doc);
+        Object.defineProperty(res, PersistenceKeys.METADATA, {
+          enumerable: false,
+          writable: false,
+          value: (r as any).doc[CouchDBKeys.REV],
+        });
+        return res;
+      }
+      throw new InternalError("Should be impossible");
+    });
   }
 
   private generateId(tableName: string, id: string | number) {
