@@ -1,4 +1,4 @@
-import { MangoOperator } from "nano";
+import { MangoOperator } from "../types";
 
 export const CouchDBOperator: Record<string, MangoOperator> = {
   EQUAL: "$eq",

@@ -1,6 +1,6 @@
 import { Const, SelectClause } from "@decaf-ts/core";
-import { MangoQuery } from "nano";
 import { ModelArg, Model } from "@decaf-ts/decorator-validation";
+import { MangoQuery } from "../types";
 
 export class CouchDBSelectClause<M extends Model> extends SelectClause<
   MangoQuery,

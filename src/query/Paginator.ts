@@ -4,13 +4,13 @@ import {
   SequenceOptions,
   Statement,
 } from "@decaf-ts/core";
-import { MangoQuery, MangoResponse } from "nano";
 import {
   DefaultSeparator,
   findPrimaryKey,
   InternalError,
 } from "@decaf-ts/db-decorators";
 import { parseSequenceValue } from "../sequences/utils";
+import { MangoQuery, MangoResponse } from "../types";
 
 export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
   private bookMark?: string;
@@ -69,7 +69,7 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
     const results =
       statement.fields && statement.fields.length
         ? docs // has fields means its not full model
-        : docs.map((d) => {
+        : docs.map((d: any) => {
             //no fields means we need to revert to saving process
             if (!target) throw new PagingError("No statement target defined");
             const pkDef = findPrimaryKey(new target()) as {

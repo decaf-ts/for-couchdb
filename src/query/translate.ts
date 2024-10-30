@@ -1,7 +1,7 @@
 import { GroupOperator, Operator } from "@decaf-ts/core";
 import { CouchDBGroupOperator, CouchDBOperator } from "./constants";
 import { QueryError } from "@decaf-ts/core";
-import { MangoOperator } from "nano";
+import { MangoOperator } from "../types";
 
 export function translateOperators(
   operator: GroupOperator | Operator

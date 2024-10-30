@@ -11,7 +11,6 @@ import {
   SelectSelector,
   Statement,
 } from "@decaf-ts/core";
-import { DocumentScope, MangoQuery, MangoSelector } from "nano";
 import { LimitClause } from "@decaf-ts/core";
 import { SelectClause } from "@decaf-ts/core";
 import { WhereClause } from "@decaf-ts/core";
@@ -30,6 +29,7 @@ import { CouchDBSelectClause } from "./SelectClause";
 import { CouchDBValuesClause } from "./ValuesClause";
 import { CouchDBOperator } from "./constants";
 import { CouchDBAdapter } from "../adapter";
+import { DocumentScope, MangoQuery, MangoSelector } from "../types";
 
 export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
   constructor(adapter: CouchDBAdapter) {

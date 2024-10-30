@@ -1,9 +1,9 @@
 import { Condition, WhereClause } from "@decaf-ts/core";
-import { MangoOperator, MangoQuery, MangoSelector } from "nano";
 import { ModelArg } from "@decaf-ts/decorator-validation";
 import { CouchDBGroupOperator } from "./constants";
 import { sf } from "@decaf-ts/decorator-validation";
 import { CouchDBKeys } from "../constants";
+import { MangoOperator, MangoQuery, MangoSelector } from "../types";
 
 export class CouchDBWhereClause extends WhereClause<MangoQuery> {
   constructor(clause: ModelArg<WhereClause<MangoQuery>>) {

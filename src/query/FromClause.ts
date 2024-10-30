@@ -1,8 +1,8 @@
 import { FromClause } from "@decaf-ts/core";
-import { MangoQuery } from "nano";
 import { ModelArg, Model, Constructor } from "@decaf-ts/decorator-validation";
 import { CouchDBKeys } from "../constants";
 import { Repository } from "@decaf-ts/core";
+import { MangoQuery } from "../types";
 
 // noinspection JSAnnotator
 export class CouchDBFromClause<M extends Model> extends FromClause<

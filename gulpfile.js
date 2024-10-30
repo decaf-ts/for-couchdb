@@ -63,8 +63,6 @@ function getWebpackConfig(isESM, isDev) {
     resolve: {
       extensions: [".ts", ".js"],
       fallback: {
-        http: require.resolve("stream-http"),
-        https: require.resolve("https-browserify"),
         path: false,
         fs: false,
         stream: false,

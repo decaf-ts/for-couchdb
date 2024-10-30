@@ -1,25 +1,19 @@
 import { OrderDirection, PersistenceKeys } from "@decaf-ts/core";
-import {
-  CreateIndexRequest,
-  DocumentScope,
-  MangoSelector,
-  ServerScope,
-  SortOrder,
-} from "nano";
 import { CouchDBKeys } from "./constants";
 import { DefaultSeparator } from "@decaf-ts/db-decorators";
 import { CouchDBOperator } from "./query/constants";
+import { CreateIndexRequest, MangoSelector, SortOrder } from "./types";
 
-export async function reAuth(con: ServerScope, user: string, pass: string) {
+export async function reAuth(con: any, user: string, pass: string) {
   return con.auth(user, pass);
 }
 
 export function wrapDocumentScope(
-  con: ServerScope,
+  con: any,
   dbName: string,
   user: string,
   pass: string
-): DocumentScope<any> {
+): any {
   const db = con.use(dbName);
   ["insert", "get", "put", "destroy", "find"].forEach((k) => {
     const original = (db as Record<string, any>)[k];

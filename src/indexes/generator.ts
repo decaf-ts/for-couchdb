@@ -7,9 +7,8 @@ import {
 import { CouchDBKeys } from "../constants";
 import { DefaultSeparator } from "@decaf-ts/db-decorators";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
-
-import { CreateIndexRequest } from "nano";
 import { CouchDBOperator } from "../query/constants";
+import { CreateIndexRequest } from "../types";
 
 function generateIndexName(
   name: string[],

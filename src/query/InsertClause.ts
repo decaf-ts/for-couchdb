@@ -1,7 +1,7 @@
 import { InsertClause } from "@decaf-ts/core";
-import { MangoQuery } from "nano";
 import { ModelArg, Model } from "@decaf-ts/decorator-validation";
 import { InternalError } from "@decaf-ts/db-decorators";
+import { MangoQuery } from "../types";
 
 // noinspection JSAnnotator
 export class CouchDBInsertClause<M extends Model> extends InsertClause<

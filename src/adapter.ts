@@ -11,23 +11,8 @@ import {
   Condition,
   ConnectionError,
   Repository,
+  User,
 } from "@decaf-ts/core";
-import {
-  MangoQuery,
-  DocumentScope,
-  DocumentInsertResponse,
-  DocumentGetResponse,
-  ServerScope,
-  DatabaseCreateResponse,
-  MaybeDocument,
-  MangoResponse,
-  MangoSelector,
-  DocumentBulkResponse,
-  MangoOperator,
-  DatabaseSessionResponse,
-  CreateIndexRequest,
-} from "nano";
-import * as Nano from "nano";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
@@ -43,11 +28,25 @@ import { CouchDBSequence } from "./sequences/Sequence";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { generateIndexes } from "./indexes/generator";
+import {
+  CreateIndexRequest,
+  DocumentBulkResponse,
+  DocumentGetResponse,
+  DocumentInsertResponse,
+  DocumentScope,
+  MangoOperator,
+  MangoQuery,
+  MangoResponse,
+  MangoSelector,
+} from "./types";
 
-export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
-  private factory?: Factory;
+export abstract class CouchDBAdapter extends Adapter<
+  DocumentScope<any>,
+  MangoQuery
+> {
+  protected factory?: Factory;
 
-  constructor(scope: DocumentScope<any>, flavour: string) {
+  protected constructor(scope: DocumentScope<any>, flavour: string) {
     super(scope, flavour);
   }
 
@@ -114,7 +113,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     return this.index(...managedModels);
   }
 
-  async index<M extends Model>(...models: Constructor<M>[]): Promise<any> {
+  async index<M extends Model>(...models: Constructor<M>[]): Promise<void> {
     const indexes: CreateIndexRequest[] = generateIndexes(models);
     for (const index of indexes) {
       const res = await this.native.createIndex(index);
@@ -124,16 +123,7 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
     }
   }
 
-  async user() {
-    try {
-      const user: DatabaseSessionResponse = await (
-        (this.native as any)[CouchDBKeys.NATIVE] as ServerScope
-      ).session();
-      return user.userCtx.name;
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-  }
+  abstract user(): Promise<User>;
 
   async raw<V>(rawInput: MangoQuery, process = true): Promise<V> {
     try {
@@ -333,97 +323,6 @@ export class CouchDBAdapter extends Adapter<DocumentScope<any>, MangoQuery> {
         if (code.toString().match(/ECONNREFUSED/g))
           return new ConnectionError(err);
         return new InternalError(err);
-    }
-  }
-
-  static connect(
-    user: string,
-    pass: string,
-    host = "localhost:5984",
-    protocol: "http" | "https" = "http"
-  ): ServerScope {
-    return Nano(`${protocol}://${user}:${pass}@${host}`);
-  }
-
-  static async createDatabase(con: ServerScope, name: string) {
-    let result: DatabaseCreateResponse;
-    try {
-      result = await con.db.create(name);
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-    const { ok, error, reason } = result;
-    if (!ok) throw this.parseError(error as string, reason);
-  }
-
-  static async deleteDatabase(con: ServerScope, name: string) {
-    let result;
-    try {
-      result = await con.db.destroy(name);
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-    const { ok } = result;
-    if (!ok)
-      throw new InternalError(`Failed to delete database with name ${name}`);
-  }
-
-  static async createUser(
-    con: ServerScope,
-    dbName: string,
-    user: string,
-    pass: string,
-    roles: string[] = ["reader", "writer"]
-  ) {
-    const users = await con.db.use("_users");
-    const usr = {
-      _id: "org.couchdb.user:" + user,
-      name: user,
-      password: pass,
-      roles: roles,
-      type: "user",
-    };
-    try {
-      const created: DocumentInsertResponse = await users.insert(
-        usr as MaybeDocument
-      );
-      const { ok } = created;
-      if (!ok) throw new InternalError(`Failed to create user ${user}`);
-      const security: any = await con.request({
-        db: dbName,
-        method: "put",
-        path: "_security",
-        // headers: {
-        //
-        // },
-        body: {
-          admins: {
-            names: [user],
-            roles: [],
-          },
-          members: {
-            names: [user],
-            roles: roles,
-          },
-        },
-      });
-      if (!security.ok)
-        throw new InternalError(
-          `Failed to authorize user ${user} to db ${dbName}`
-        );
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-  }
-
-  static async deleteUser(con: ServerScope, dbName: string, user: string) {
-    const users = await con.db.use("_users");
-    const id = "org.couchdb.user:" + user;
-    try {
-      const usr = await users.get(id);
-      await users.destroy(id, usr._rev);
-    } catch (e: any) {
-      throw this.parseError(e);
     }
   }
 }
