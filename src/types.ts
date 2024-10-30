@@ -426,6 +426,54 @@ export interface ServerScope {
   session(): Promise<DatabaseSessionResponse>;
 }
 
+/** Fetch with POST _all_docs parameters.
+ * @see Docs: {@link https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs} */
+interface DocumentFetchParams {
+  conflicts?: boolean;
+  descending?: boolean;
+  end_key?: string;
+  end_key_doc_id?: string;
+  include_docs?: boolean;
+  inclusive_end?: boolean;
+  key?: string;
+  keys?: string | string[];
+  limit?: number;
+  skip?: number;
+  stale?: string;
+  start_key?: string;
+  start_key_doc_id?: string;
+  update_seq?: boolean;
+}
+
+/** Document fetch error */
+interface DocumentLookupFailure {
+  key: string;
+  error: string;
+}
+/** Bulk API per-document response. */
+interface DocumentResponseRowMeta {
+  id: string;
+  key: string;
+  value: {
+    rev: string;
+  };
+  error?: string;
+}
+
+/** Bulk API per-document response with document body. */
+interface DocumentResponseRow<D> extends DocumentResponseRowMeta {
+  doc?: D & Document;
+}
+
+/** Fetch with POST _all_docs response
+ * @see Docs: {@link https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs} */
+interface DocumentFetchResponse<D> {
+  offset: number;
+  rows: Array<DocumentResponseRow<D> | DocumentLookupFailure>;
+  total_rows: number;
+  update_seq?: number | string;
+}
+
 /** Documents scope */
 export interface DocumentScope<D> {
   /** Initiates new session for specified user credentials by providing Cookie value.
@@ -472,7 +520,12 @@ export interface DocumentScope<D> {
   /** Create a Mango index.
    * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#db-index} */
   createIndex(indexDef: CreateIndexRequest): Promise<CreateIndexResponse>;
-
+  /** Fetch a list of documents by _id with options.
+   * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs} */
+  fetch(
+    docnames: BulkFetchDocsWrapper,
+    params: DocumentFetchParams
+  ): Promise<DocumentFetchResponse<D>>;
   /** Run Mango query.
    * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#db-find} */
   find(query: MangoQuery): Promise<MangoResponse<D>>;

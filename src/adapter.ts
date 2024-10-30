@@ -222,6 +222,17 @@ export abstract class CouchDBAdapter extends Adapter<
     return record;
   }
 
+  async readAll(
+    tableName: string,
+    ids: (string | number | bigint)[]
+  ): Promise<Record<string, any>[]> {
+    const results = await this.native.fetch(
+      { keys: ids.map((id) => this.generateId(tableName, id as any)) },
+      {}
+    );
+    return results.rows;
+  }
+
   async update(
     tableName: string,
     id: string | number,
@@ -257,6 +268,45 @@ export abstract class CouchDBAdapter extends Adapter<
     return model;
   }
 
+  async updateAll(
+    tableName: string,
+    ids: string[] | number[],
+    models: Record<string, any>[]
+  ): Promise<Record<string, any>[]> {
+    if (ids.length !== models.length)
+      throw new InternalError("Ids and models must have the same length");
+
+    const records = ids.map((id, count) => {
+      const record: Record<string, any> = {};
+      record[CouchDBKeys.TABLE] = tableName;
+      record[CouchDBKeys.ID] = this.generateId(tableName, id);
+      Object.assign(record, models[count]);
+      return record;
+    });
+    let response: DocumentBulkResponse[];
+    try {
+      response = await this.native.bulk({ docs: records });
+    } catch (e: any) {
+      throw this.parseError(e);
+    }
+    if (!response.every((r) => !r.error)) {
+      const errors = response.reduce((accum: string[], el, i) => {
+        if (el.error)
+          accum.push(
+            `el ${i}: ${el.error}${el.reason ? ` - ${el.reason}` : ""}`
+          );
+        return accum;
+      }, []);
+      throw new InternalError(errors.join("\n"));
+    }
+
+    models.forEach((m, i) => {
+      Repository.setMetadata(m as any, response[i].rev);
+      return m;
+    });
+    return models;
+  }
+
   async delete(
     tableName: string,
     id: string | number
@@ -276,6 +326,15 @@ export abstract class CouchDBAdapter extends Adapter<
       value: record._rev,
     });
     return record;
+  }
+
+  deleteAll(
+    tableName: string,
+    ids: (string | number | bigint)[],
+    ...args: any[]
+  ): Promise<Record<string, any>[]> {
+    // TODO
+    return super.deleteAll(tableName, ids, ...args);
   }
 
   private generateId(tableName: string, id: string | number) {
