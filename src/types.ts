@@ -428,7 +428,7 @@ export interface ServerScope {
 
 /** Fetch with POST _all_docs parameters.
  * @see Docs: {@link https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs} */
-interface DocumentFetchParams {
+export interface DocumentFetchParams {
   conflicts?: boolean;
   descending?: boolean;
   end_key?: string;
@@ -446,12 +446,12 @@ interface DocumentFetchParams {
 }
 
 /** Document fetch error */
-interface DocumentLookupFailure {
+export interface DocumentLookupFailure {
   key: string;
   error: string;
 }
 /** Bulk API per-document response. */
-interface DocumentResponseRowMeta {
+export interface DocumentResponseRowMeta {
   id: string;
   key: string;
   value: {
@@ -461,13 +461,13 @@ interface DocumentResponseRowMeta {
 }
 
 /** Bulk API per-document response with document body. */
-interface DocumentResponseRow<D> extends DocumentResponseRowMeta {
+export interface DocumentResponseRow<D> extends DocumentResponseRowMeta {
   doc?: D & Document;
 }
 
 /** Fetch with POST _all_docs response
  * @see Docs: {@link https://docs.couchdb.org/en/latest/api/database/bulk-api.html#post--db-_all_docs} */
-interface DocumentFetchResponse<D> {
+export interface DocumentFetchResponse<D> {
   offset: number;
   rows: Array<DocumentResponseRow<D> | DocumentLookupFailure>;
   total_rows: number;

@@ -1,8 +1,8 @@
 import { model, ModelArg, required } from "@decaf-ts/decorator-validation";
-import { BaseModel, pk, index, table, uses } from "@decaf-ts/core";
+import { BaseModel, pk, index, table } from "@decaf-ts/core";
+import { CouchDBKeys } from "../constants";
 
-@table("??sequence")
-@uses("nano")
+@table(CouchDBKeys.SEQUENCE)
 @model()
 export class Sequence extends BaseModel {
   /**

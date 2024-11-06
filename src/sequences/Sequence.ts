@@ -5,9 +5,15 @@ import {
   IRepository,
   NotFoundError,
 } from "@decaf-ts/db-decorators";
-import { repository, SequenceOptions } from "@decaf-ts/core";
+import {
+  Adapter,
+  Repository,
+  repository,
+  SequenceOptions,
+} from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
 import { parseSequenceValue } from "./utils";
+import { DocumentScope, MangoQuery } from "../types";
 
 /**
  * @summary Abstract implementation of a Sequence
@@ -21,11 +27,14 @@ import { parseSequenceValue } from "./utils";
  * @category Sequences
  */
 export class CouchDBSequence extends Sequence {
-  @repository(Seq)
-  protected repo!: IRepository<Seq>;
+  protected repo: IRepository<Seq>;
 
-  constructor(options: SequenceOptions) {
+  constructor(
+    options: SequenceOptions,
+    adapter: Adapter<DocumentScope<any>, MangoQuery>
+  ) {
     super(options);
+    this.repo = Repository.forModel(Seq, adapter.flavour);
   }
 
   /**

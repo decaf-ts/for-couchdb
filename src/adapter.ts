@@ -25,6 +25,7 @@ import { CouchDBStatement } from "./query/Statement";
 import { Factory } from "./query";
 import { translateOperators } from "./query/translate";
 import { CouchDBSequence } from "./sequences/Sequence";
+import { Sequence as Seq } from "./model/CouchDBSequence";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { generateIndexes } from "./indexes/generator";
@@ -105,7 +106,7 @@ export abstract class CouchDBAdapter extends Adapter<
   }
 
   async Sequence(options: SequenceOptions): Promise<Sequence> {
-    return new CouchDBSequence(options);
+    return new CouchDBSequence(options, this);
   }
 
   async initialize(): Promise<void> {
