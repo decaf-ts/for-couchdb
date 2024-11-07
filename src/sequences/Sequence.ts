@@ -1,10 +1,6 @@
 import { sf } from "@decaf-ts/decorator-validation";
 import { Sequence as Seq } from "../model/CouchDBSequence";
-import {
-  InternalError,
-  IRepository,
-  NotFoundError,
-} from "@decaf-ts/db-decorators";
+import { InternalError, NotFoundError } from "@decaf-ts/db-decorators";
 import { Adapter, Repository, SequenceOptions } from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
 import { parseSequenceValue } from "./utils";
@@ -22,7 +18,7 @@ import { DocumentScope, MangoQuery } from "../types";
  * @category Sequences
  */
 export class CouchDBSequence extends Sequence {
-  protected repo: IRepository<Seq>;
+  protected repo: Repository<Seq>;
 
   constructor(
     options: SequenceOptions,
