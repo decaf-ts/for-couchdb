@@ -5,12 +5,7 @@ import {
   IRepository,
   NotFoundError,
 } from "@decaf-ts/db-decorators";
-import {
-  Adapter,
-  Repository,
-  repository,
-  SequenceOptions,
-} from "@decaf-ts/core";
+import { Adapter, Repository, SequenceOptions } from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
 import { parseSequenceValue } from "./utils";
 import { DocumentScope, MangoQuery } from "../types";
