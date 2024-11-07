@@ -25,7 +25,6 @@ import { CouchDBStatement } from "./query/Statement";
 import { Factory } from "./query";
 import { translateOperators } from "./query/translate";
 import { CouchDBSequence } from "./sequences/Sequence";
-import { Sequence as Seq } from "./model/CouchDBSequence";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { generateIndexes } from "./indexes/generator";
@@ -223,28 +222,10 @@ export abstract class CouchDBAdapter extends Adapter<
     return record;
   }
 
-  async readAll(
+  abstract readAll(
     tableName: string,
     ids: (string | number | bigint)[]
-  ): Promise<Record<string, any>[]> {
-    const results = await this.native.fetch(
-      { keys: ids.map((id) => this.generateId(tableName, id as any)) },
-      {}
-    );
-    return results.rows.map((r) => {
-      if ((r as any).error) throw new InternalError((r as any).error);
-      if ((r as any).doc) {
-        const res = Object.assign({}, (r as any).doc);
-        Object.defineProperty(res, PersistenceKeys.METADATA, {
-          enumerable: false,
-          writable: false,
-          value: (r as any).doc[CouchDBKeys.REV],
-        });
-        return res;
-      }
-      throw new InternalError("Should be impossible");
-    });
-  }
+  ): Promise<Record<string, any>[]>;
 
   async update(
     tableName: string,
@@ -347,39 +328,12 @@ export abstract class CouchDBAdapter extends Adapter<
     return record;
   }
 
-  async deleteAll(
+  abstract deleteAll(
     tableName: string,
     ids: (string | number | bigint)[]
-  ): Promise<Record<string, any>[]> {
-    const results = await this.native.fetch(
-      { keys: ids.map((id) => this.generateId(tableName, id as any)) },
-      {}
-    );
-    const deletion: DocumentBulkResponse[] = await this.native.bulk({
-      docs: results.rows.map((r) => {
-        (r as any)[CouchDBKeys.DELETED] = true;
-        return r;
-      }),
-    });
-    deletion.forEach((d: DocumentBulkResponse) => {
-      if (d.error) console.error(d.error);
-    });
-    return results.rows.map((r) => {
-      if ((r as any).error) throw new InternalError((r as any).error);
-      if ((r as any).doc) {
-        const res = Object.assign({}, (r as any).doc);
-        Object.defineProperty(res, PersistenceKeys.METADATA, {
-          enumerable: false,
-          writable: false,
-          value: (r as any).doc[CouchDBKeys.REV],
-        });
-        return res;
-      }
-      throw new InternalError("Should be impossible");
-    });
-  }
+  ): Promise<Record<string, any>[]>;
 
-  private generateId(tableName: string, id: string | number) {
+  protected generateId(tableName: string, id: string | number) {
     return [tableName, id].join(CouchDBKeys.SEPARATOR);
   }
 
