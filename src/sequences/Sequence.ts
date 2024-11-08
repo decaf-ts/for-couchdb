@@ -5,6 +5,7 @@ import { Adapter, Repository, SequenceOptions } from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
 import { parseSequenceValue } from "./utils";
 import { DocumentScope, MangoQuery } from "../types";
+import { CouchDBRepository } from "../interfaces";
 
 /**
  * @summary Abstract implementation of a Sequence
@@ -18,7 +19,7 @@ import { DocumentScope, MangoQuery } from "../types";
  * @category Sequences
  */
 export class CouchDBSequence extends Sequence {
-  protected repo: Repository<Seq>;
+  protected repo: CouchDBRepository<Seq>;
 
   constructor(
     options: SequenceOptions,
