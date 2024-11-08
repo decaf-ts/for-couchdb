@@ -19,6 +19,7 @@ import {
   ConflictError,
   InternalError,
   NotFoundError,
+  prefixMethod,
 } from "@decaf-ts/db-decorators";
 import "reflect-metadata";
 import { CouchDBStatement } from "./query/Statement";
@@ -27,30 +28,20 @@ import { translateOperators } from "./query/translate";
 import { CouchDBSequence } from "./sequences/Sequence";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
-import { generateIndexes } from "./indexes/generator";
-import {
-  CreateIndexRequest,
-  DocumentBulkResponse,
-  DocumentGetResponse,
-  DocumentInsertResponse,
-  DocumentScope,
-  MangoOperator,
-  MangoQuery,
-  MangoResponse,
-  MangoSelector,
-} from "./types";
+import { MangoOperator, MangoQuery, MangoSelector } from "./types";
 
-export abstract class CouchDBAdapter extends Adapter<
-  DocumentScope<any>,
-  MangoQuery
-> {
-  protected factory?: Factory;
+export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
+  protected factory?: Factory<S>;
 
-  protected constructor(scope: DocumentScope<any>, flavour: string) {
+  protected constructor(scope: S, flavour: string) {
     super(scope, flavour);
+    [this.create, this.createAll].forEach((m) => {
+      const name = m.name;
+      prefixMethod(this, m, (this as any)[name + "Prefix"]);
+    });
   }
 
-  get Clauses(): ClauseFactory<DocumentScope<any>, MangoQuery> {
+  get Clauses(): ClauseFactory<S, MangoQuery> {
     if (!this.factory) this.factory = new Factory(this);
     return this.factory;
   }
@@ -113,62 +104,61 @@ export abstract class CouchDBAdapter extends Adapter<
     return this.index(...managedModels);
   }
 
-  async index<M extends Model>(...models: Constructor<M>[]): Promise<void> {
-    const indexes: CreateIndexRequest[] = generateIndexes(models);
-    for (const index of indexes) {
-      const res = await this.native.createIndex(index);
-      const { result, id, name } = res;
-      if (result === "existing")
-        throw new ConflictError(`Index for table ${name} with id ${id}`);
-    }
-  }
+  protected abstract index<M extends Model>(
+    ...models: Constructor<M>[]
+  ): Promise<void>;
 
   abstract user(): Promise<User>;
 
-  async raw<V>(rawInput: MangoQuery, process = true): Promise<V> {
-    try {
-      const response: MangoResponse<V> = await this.native.find(rawInput);
-      if (process) return response.docs as V;
-      return response as V;
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-  }
+  abstract raw<V>(rawInput: MangoQuery, process: boolean): Promise<V>;
 
-  async create(
-    tableName: string,
-    id: string | number,
-    model: Record<string, any>
-  ): Promise<Record<string, any>> {
-    const record: Record<string, any> = {};
-    record[CouchDBKeys.TABLE] = tableName;
-    record[CouchDBKeys.ID] = this.generateId(tableName, id);
-    Object.assign(record, model);
-    let response: DocumentInsertResponse;
-    try {
-      response = await this.native.insert(record);
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-
-    if (!response.ok)
-      throw new InternalError(
-        `Failed to insert doc id: ${id} in table ${tableName}`
-      );
+  protected assignMetadata(
+    model: Record<string, any>,
+    rev: string
+  ): Record<string, any> {
     Object.defineProperty(model, PersistenceKeys.METADATA, {
       enumerable: false,
       configurable: false,
       writable: false,
-      value: response.rev,
+      value: rev,
     });
     return model;
   }
 
-  async createAll(
+  protected assignMultipleMetadata(
+    models: Record<string, any>[],
+    revs: string[]
+  ): Record<string, any>[] {
+    models.forEach((m, i) => {
+      Repository.setMetadata(m as any, revs[i]);
+      return m;
+    });
+    return models;
+  }
+
+  protected createPrefix(
+    tableName: string,
+    id: string | number,
+    model: Record<string, any>
+  ) {
+    const record: Record<string, any> = {};
+    record[CouchDBKeys.TABLE] = tableName;
+    record[CouchDBKeys.ID] = this.generateId(tableName, id);
+    Object.assign(record, model);
+    return [tableName, id, record];
+  }
+
+  abstract create(
+    tableName: string,
+    id: string | number,
+    model: Record<string, any>
+  ): Promise<Record<string, any>>;
+
+  protected createAllPrefix(
     tableName: string,
     ids: string[] | number[],
     models: Record<string, any>[]
-  ): Promise<Record<string, any>[]> {
+  ) {
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
 
@@ -179,59 +169,30 @@ export abstract class CouchDBAdapter extends Adapter<
       Object.assign(record, models[count]);
       return record;
     });
-    let response: DocumentBulkResponse[];
-    try {
-      response = await this.native.bulk({ docs: records });
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-    if (!response.every((r) => !r.error)) {
-      const errors = response.reduce((accum: string[], el, i) => {
-        if (el.error)
-          accum.push(
-            `el ${i}: ${el.error}${el.reason ? ` - ${el.reason}` : ""}`
-          );
-        return accum;
-      }, []);
-      throw new InternalError(errors.join("\n"));
-    }
-
-    models.forEach((m, i) => {
-      Repository.setMetadata(m as any, response[i].rev);
-      return m;
-    });
-    return models;
+    return [tableName, ids, records];
   }
 
-  async read(
+  abstract createAll(
+    tableName: string,
+    ids: string[] | number[],
+    models: Record<string, any>[]
+  ): Promise<Record<string, any>[]>;
+
+  abstract read(
     tableName: string,
     id: string | number
-  ): Promise<Record<string, any>> {
-    const _id = this.generateId(tableName, id);
-    let record: DocumentGetResponse;
-    try {
-      record = await this.native.get(_id);
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-    Object.defineProperty(record, PersistenceKeys.METADATA, {
-      enumerable: false,
-      writable: false,
-      value: record._rev,
-    });
-    return record;
-  }
+  ): Promise<Record<string, any>>;
 
   abstract readAll(
     tableName: string,
     ids: (string | number | bigint)[]
   ): Promise<Record<string, any>[]>;
 
-  async update(
+  updatePrefix(
     tableName: string,
     id: string | number,
     model: Record<string, any>
-  ): Promise<Record<string, any>> {
+  ) {
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
     record[CouchDBKeys.ID] = this.generateId(tableName, id);
@@ -242,31 +203,20 @@ export abstract class CouchDBAdapter extends Adapter<
       );
     Object.assign(record, model);
     record[CouchDBKeys.REV] = rev;
-    let response: DocumentInsertResponse;
-    try {
-      response = await this.native.insert(record);
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-
-    if (!response.ok)
-      throw new InternalError(
-        `Failed to update doc id: ${id} in table ${tableName}`
-      );
-    Object.defineProperty(model, PersistenceKeys.METADATA, {
-      enumerable: false,
-      configurable: false,
-      writable: false,
-      value: response.rev,
-    });
-    return model;
+    return [tableName, id, record];
   }
 
-  async updateAll(
+  abstract update(
+    tableName: string,
+    id: string | number,
+    model: Record<string, any>
+  ): Promise<Record<string, any>>;
+
+  protected updateAllPrefix(
     tableName: string,
     ids: string[] | number[],
     models: Record<string, any>[]
-  ): Promise<Record<string, any>[]> {
+  ) {
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
 
@@ -283,50 +233,19 @@ export abstract class CouchDBAdapter extends Adapter<
       record[CouchDBKeys.REV] = rev;
       return record;
     });
-    let response: DocumentBulkResponse[];
-    try {
-      response = await this.native.bulk({ docs: records });
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-    if (!response.every((r) => !r.error)) {
-      const errors = response.reduce((accum: string[], el, i) => {
-        if (el.error)
-          accum.push(
-            `el ${i}: ${el.error}${el.reason ? ` - ${el.reason}` : ""}`
-          );
-        return accum;
-      }, []);
-      throw new InternalError(errors.join("\n"));
-    }
-
-    models.forEach((m, i) => {
-      Repository.setMetadata(m as any, response[i].rev);
-      return m;
-    });
-    return models;
+    return [tableName, ids, records];
   }
 
-  async delete(
+  abstract updateAll(
+    tableName: string,
+    ids: string[] | number[],
+    models: Record<string, any>[]
+  ): Promise<Record<string, any>[]>;
+
+  abstract delete(
     tableName: string,
     id: string | number
-  ): Promise<Record<string, any>> {
-    const _id = this.generateId(tableName, id);
-    let record: DocumentGetResponse;
-    try {
-      record = await this.native.get(_id);
-      await this.native.destroy(_id, record._rev);
-    } catch (e: any) {
-      throw this.parseError(e);
-    }
-    Object.defineProperty(record, PersistenceKeys.METADATA, {
-      enumerable: false,
-      configurable: false,
-      writable: false,
-      value: record._rev,
-    });
-    return record;
-  }
+  ): Promise<Record<string, any>>;
 
   abstract deleteAll(
     tableName: string,

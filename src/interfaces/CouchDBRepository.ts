@@ -3,8 +3,8 @@ import { CouchDBAdapter } from "../adapter";
 import { Model } from "@decaf-ts/decorator-validation";
 import { MangoQuery } from "../types";
 
-export type CouchDBRepository<M extends Model> = Repository<
+export type CouchDBRepository<M extends Model, S> = Repository<
   M,
   MangoQuery,
-  CouchDBAdapter
+  CouchDBAdapter<S>
 >;

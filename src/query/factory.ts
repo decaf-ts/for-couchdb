@@ -29,10 +29,10 @@ import { CouchDBSelectClause } from "./SelectClause";
 import { CouchDBValuesClause } from "./ValuesClause";
 import { CouchDBOperator } from "./constants";
 import { CouchDBAdapter } from "../adapter";
-import { DocumentScope, MangoQuery, MangoSelector } from "../types";
+import { MangoQuery, MangoSelector } from "../types";
 
-export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
-  constructor(adapter: CouchDBAdapter) {
+export class Factory<S> extends ClauseFactory<S, MangoQuery> {
+  constructor(adapter: CouchDBAdapter<S>) {
     super(adapter);
   }
 
@@ -64,7 +64,7 @@ export class Factory extends ClauseFactory<DocumentScope<any>, MangoQuery> {
 
   insert<M extends Model>(): InsertClause<MangoQuery, M> {
     return new CouchDBInsertClause({
-      statement: new CouchDBStatement(this.adapter as CouchDBAdapter),
+      statement: new CouchDBStatement(this.adapter),
     });
   }
 

@@ -4,7 +4,7 @@ import { InternalError, NotFoundError } from "@decaf-ts/db-decorators";
 import { Adapter, Repository, SequenceOptions } from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
 import { parseSequenceValue } from "./utils";
-import { DocumentScope, MangoQuery } from "../types";
+import { MangoQuery } from "../types";
 import { CouchDBRepository } from "../interfaces";
 
 /**
@@ -19,12 +19,9 @@ import { CouchDBRepository } from "../interfaces";
  * @category Sequences
  */
 export class CouchDBSequence extends Sequence {
-  protected repo: CouchDBRepository<Seq>;
+  protected repo: CouchDBRepository<Seq, any>;
 
-  constructor(
-    options: SequenceOptions,
-    adapter: Adapter<DocumentScope<any>, MangoQuery>
-  ) {
+  constructor(options: SequenceOptions, adapter: Adapter<any, MangoQuery>) {
     super(options);
     this.repo = Repository.forModel(Seq, adapter.flavour);
   }
