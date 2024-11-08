@@ -41,7 +41,7 @@ function getWebpackConfig(isESM, isDev) {
     module: {
       rules: [
         {
-          test: /\.ts$/,
+          test: /(?<!\.test)\.ts$/,
           use: [
             {
               loader: "ts-loader",
