@@ -35,7 +35,7 @@ export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
 
   protected constructor(scope: S, flavour: string) {
     super(scope, flavour);
-    [this.create, this.createAll].forEach((m) => {
+    [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
       const name = m.name;
       prefixMethod(this, m, (this as any)[name + "Prefix"]);
     });
