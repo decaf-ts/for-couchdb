@@ -111,30 +111,6 @@ export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
     ...models: Constructor<M>[]
   ): Promise<void>;
 
-  async context<M extends Model, C extends Context<M>>(
-    operation:
-      | OperationKeys.CREATE
-      | OperationKeys.READ
-      | OperationKeys.UPDATE
-      | OperationKeys.DELETE,
-    model: Constructor<M>
-  ): Promise<C> {
-    const user = await this.user();
-    return new (class extends Ctx<M> {
-      constructor(
-        operation: OperationKeys,
-        model?: Constructor<M>,
-        parent?: Ctx<any, any>
-      ) {
-        super(operation, model, parent);
-      }
-
-      get user(): User {
-        return user;
-      }
-    })(operation, model) as unknown as C;
-  }
-
   protected abstract user(): Promise<User>;
 
   abstract raw<V>(rawInput: MangoQuery, process: boolean): Promise<V>;
