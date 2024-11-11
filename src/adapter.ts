@@ -12,16 +12,13 @@ import {
   ConnectionError,
   Repository,
   User,
-  Context as Ctx,
 } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
   ConflictError,
-  Context,
   InternalError,
   NotFoundError,
-  OperationKeys,
   prefixMethod,
 } from "@decaf-ts/db-decorators";
 import "reflect-metadata";
