@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   replica-0:
     image: ghcr.io/decaf-ts/couchdb:latest
