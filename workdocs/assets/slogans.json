@@ -1,0 +1,402 @@
+[
+  {
+    "Slogan":"Put your data on the Couch \u2014 it deserves a break.",
+    "Tags":"CouchDB, Chill, Fun"
+  },
+  {
+    "Slogan":"Decaf-TS + CouchDB: the most relaxed stack in tech.",
+    "Tags":"CouchDB, Coffee-themed, Calm"
+  },
+  {
+    "Slogan":"No stress, no schema \u2014 just smooth storage.",
+    "Tags":"NoSQL, Calm, Tech"
+  },
+  {
+    "Slogan":"Sit back. Your queries just got simpler.",
+    "Tags":"SQL-like, Chill, Productivity"
+  },
+  {
+    "Slogan":"Declarative indexes. Because you have better things to do.",
+    "Tags":"Indexing, DX, Witty"
+  },
+  {
+    "Slogan":"Query like it\u2019s SQL. Relax like it\u2019s NoSQL.",
+    "Tags":"SQL-like, CouchDB, Duality"
+  },
+  {
+    "Slogan":"Skip the CRUD. Keep the couch.",
+    "Tags":"CRUD-less, Chill, Fun"
+  },
+  {
+    "Slogan":"No setup. No stress. No problem.",
+    "Tags":"Declarative, Easy Setup, Calm"
+  },
+  {
+    "Slogan":"Database queries that feel like a nap in a hammock.",
+    "Tags":"SQL-like, Chill, Joy"
+  },
+  {
+    "Slogan":"Where your data chills and your dev flow soars.",
+    "Tags":"CouchDB, DevX, Chill"
+  },
+  {
+    "Slogan":"Let the indexes build themselves.",
+    "Tags":"Indexing, Productivity, Automation"
+  },
+  {
+    "Slogan":"CouchDB: for developers who like to lean back.",
+    "Tags":"Couch, Calm, Identity"
+  },
+  {
+    "Slogan":"Couch mode: ON. Query mode: AUTO.",
+    "Tags":"CouchDB, Indexing, Chill"
+  },
+  {
+    "Slogan":"Your backend\u2019s comfy recliner.",
+    "Tags":"Backend, Couch Metaphor, Humor"
+  },
+  {
+    "Slogan":"Sleep better knowing your queries just work.",
+    "Tags":"SQL-like, Productivity, Chill"
+  },
+  {
+    "Slogan":"The database that won\u2019t keep you up at night.",
+    "Tags":"CouchDB, Sleep, Calm"
+  },
+  {
+    "Slogan":"No caffeine needed when your queries write themselves.",
+    "Tags":"Indexing, Coffee-themed, Declarative"
+  },
+  {
+    "Slogan":"From query to chill in 0.01s.",
+    "Tags":"Performance, SQL-like, Couch Metaphor"
+  },
+  {
+    "Slogan":"CRUD is so last decade. Welcome to Couch mode.",
+    "Tags":"CRUD-less, Chill, Future"
+  },
+  {
+    "Slogan":"Decaf + Couch = backend bliss.",
+    "Tags":"Stack Combo, Branding, Fun"
+  },
+  {
+    "Slogan":"Put your data on the CouchDB \u2014 it deserves a break.",
+    "Tags":"CouchDB, Chill, Fun"
+  },
+  {
+    "Slogan":"Decaf-TS + CouchDBDB: the most reclineed stack in tech.",
+    "Tags":"CouchDB, Coffee-themed, Calm"
+  },
+  {
+    "Slogan":"No stress, no schema \u2014 just smooth storage.",
+    "Tags":"NoSQL, Calm, Tech"
+  },
+  {
+    "Slogan":"Sit back. Your queries just got simpler.",
+    "Tags":"SQL-like, Chill, Productivity"
+  },
+  {
+    "Slogan":"Declarative indexes. Because you have better things to do.",
+    "Tags":"Indexing, DX, Witty"
+  },
+  {
+    "Slogan":"Query like it\u2019s SQL. Relax like it\u2019s NoSQL.",
+    "Tags":"SQL-like, CouchDB, Duality"
+  },
+  {
+    "Slogan":"Skip the manual queries. Keep the couch.",
+    "Tags":"CRUD-less, Chill, Fun"
+  },
+  {
+    "Slogan":"No setup. No stress. No problem.",
+    "Tags":"Declarative, Easy Setup, Calm"
+  },
+  {
+    "Slogan":"Database queries that feel like a nap in a hammock.",
+    "Tags":"SQL-like, Chill, Joy"
+  },
+  {
+    "Slogan":"Where your data chills and your dev flow soars.",
+    "Tags":"CouchDB, DevX, Chill"
+  },
+  {
+    "Slogan":"Let the indexes build themselves.",
+    "Tags":"Indexing, Productivity, Automation"
+  },
+  {
+    "Slogan":"CouchDBDB: for developers who like to lean back.",
+    "Tags":"Couch, Calm, Identity"
+  },
+  {
+    "Slogan":"CouchDB mode: ON. Query mode: AUTO.",
+    "Tags":"CouchDB, Indexing, Chill"
+  },
+  {
+    "Slogan":"Your backend\u2019s comfy recliner.",
+    "Tags":"Backend, Couch Metaphor, Humor"
+  },
+  {
+    "Slogan":"Sleep better knowing your queries just work.",
+    "Tags":"SQL-like, Productivity, Chill"
+  },
+  {
+    "Slogan":"The database that won\u2019t keep you up at night.",
+    "Tags":"CouchDB, Sleep, Calm"
+  },
+  {
+    "Slogan":"No caffeine needed when your queries write themselves.",
+    "Tags":"Indexing, Coffee-themed, Declarative"
+  },
+  {
+    "Slogan":"From query to chill in 0.01s.",
+    "Tags":"Performance, SQL-like, Couch Metaphor"
+  },
+  {
+    "Slogan":"manual queries is so last decade. Welcome to CouchDB mode.",
+    "Tags":"CRUD-less, Chill, Future"
+  },
+  {
+    "Slogan":"Decaf + CouchDB = backend bliss.",
+    "Tags":"Stack Combo, Branding, Fun"
+  },
+  {
+    "Slogan":"Put your data on the CouchDB \u2014 it deserves a break.",
+    "Tags":"CouchDB, Chill, Fun"
+  },
+  {
+    "Slogan":"Decaf-TS + CouchDBDB: the most reclineed stack in tech.",
+    "Tags":"CouchDB, Coffee-themed, Calm"
+  },
+  {
+    "Slogan":"No stress, no schema \u2014 just smooth storage.",
+    "Tags":"NoSQL, Calm, Tech"
+  },
+  {
+    "Slogan":"Sit back. Your queries just got simpler.",
+    "Tags":"SQL-like, Chill, Productivity"
+  },
+  {
+    "Slogan":"Declarative indexes. Because you have better things to do.",
+    "Tags":"Indexing, DX, Witty"
+  },
+  {
+    "Slogan":"Query like it\u2019s SQL. Relax like it\u2019s NoSQL.",
+    "Tags":"SQL-like, CouchDB, Duality"
+  },
+  {
+    "Slogan":"Skip the manual queries. Keep the couch.",
+    "Tags":"CRUD-less, Chill, Fun"
+  },
+  {
+    "Slogan":"No setup. No stress. No problem.",
+    "Tags":"Declarative, Easy Setup, Calm"
+  },
+  {
+    "Slogan":"Database queries that feel like a nap in a hammock.",
+    "Tags":"SQL-like, Chill, Joy"
+  },
+  {
+    "Slogan":"Where your data chills and your dev flow soars.",
+    "Tags":"CouchDB, DevX, Chill"
+  },
+  {
+    "Slogan":"Let the indexes build themselves.",
+    "Tags":"Indexing, Productivity, Automation"
+  },
+  {
+    "Slogan":"CouchDBDB: for developers who like to lean back.",
+    "Tags":"Couch, Calm, Identity"
+  },
+  {
+    "Slogan":"CouchDB mode: ON. Query mode: AUTO.",
+    "Tags":"CouchDB, Indexing, Chill"
+  },
+  {
+    "Slogan":"Your backend\u2019s comfy recliner.",
+    "Tags":"Backend, Couch Metaphor, Humor"
+  },
+  {
+    "Slogan":"Sleep better knowing your queries just work.",
+    "Tags":"SQL-like, Productivity, Chill"
+  },
+  {
+    "Slogan":"The database that won\u2019t keep you up at night.",
+    "Tags":"CouchDB, Sleep, Calm"
+  },
+  {
+    "Slogan":"No caffeine needed when your queries write themselves.",
+    "Tags":"Indexing, Coffee-themed, Declarative"
+  },
+  {
+    "Slogan":"From query to chill in 0.01s.",
+    "Tags":"Performance, SQL-like, Couch Metaphor"
+  },
+  {
+    "Slogan":"manual queries is so last decade. Welcome to CouchDB mode.",
+    "Tags":"CRUD-less, Chill, Future"
+  },
+  {
+    "Slogan":"Decaf + CouchDB = backend bliss.",
+    "Tags":"Stack Combo, Branding, Fun"
+  },
+  {
+    "Slogan":"Put your data on the CouchDB \u2014 it deserves a break.",
+    "Tags":"CouchDB, Chill, Fun"
+  },
+  {
+    "Slogan":"Decaf-TS + CouchDBDB: the most reclineed stack in tech.",
+    "Tags":"CouchDB, Coffee-themed, Calm"
+  },
+  {
+    "Slogan":"No stress, no schema \u2014 just smooth storage.",
+    "Tags":"NoSQL, Calm, Tech"
+  },
+  {
+    "Slogan":"Sit back. Your queries just got simpler.",
+    "Tags":"SQL-like, Chill, Productivity"
+  },
+  {
+    "Slogan":"Declarative indexes. Because you have better things to do.",
+    "Tags":"Indexing, DX, Witty"
+  },
+  {
+    "Slogan":"Query like it\u2019s SQL. Relax like it\u2019s NoSQL.",
+    "Tags":"SQL-like, CouchDB, Duality"
+  },
+  {
+    "Slogan":"Skip the manual queries. Keep the couch.",
+    "Tags":"CRUD-less, Chill, Fun"
+  },
+  {
+    "Slogan":"No setup. No stress. No problem.",
+    "Tags":"Declarative, Easy Setup, Calm"
+  },
+  {
+    "Slogan":"Database queries that feel like a nap in a hammock.",
+    "Tags":"SQL-like, Chill, Joy"
+  },
+  {
+    "Slogan":"Where your data chills and your dev flow soars.",
+    "Tags":"CouchDB, DevX, Chill"
+  },
+  {
+    "Slogan":"Let the indexes build themselves.",
+    "Tags":"Indexing, Productivity, Automation"
+  },
+  {
+    "Slogan":"CouchDBDB: for developers who like to lean back.",
+    "Tags":"Couch, Calm, Identity"
+  },
+  {
+    "Slogan":"CouchDB mode: ON. Query mode: AUTO.",
+    "Tags":"CouchDB, Indexing, Chill"
+  },
+  {
+    "Slogan":"Your backend\u2019s comfy recliner.",
+    "Tags":"Backend, Couch Metaphor, Humor"
+  },
+  {
+    "Slogan":"Sleep better knowing your queries just work.",
+    "Tags":"SQL-like, Productivity, Chill"
+  },
+  {
+    "Slogan":"The database that won\u2019t keep you up at night.",
+    "Tags":"CouchDB, Sleep, Calm"
+  },
+  {
+    "Slogan":"No caffeine needed when your queries write themselves.",
+    "Tags":"Indexing, Coffee-themed, Declarative"
+  },
+  {
+    "Slogan":"From query to chill in 0.01s.",
+    "Tags":"Performance, SQL-like, Couch Metaphor"
+  },
+  {
+    "Slogan":"manual queries is so last decade. Welcome to CouchDB mode.",
+    "Tags":"CRUD-less, Chill, Future"
+  },
+  {
+    "Slogan":"Decaf + CouchDB = backend bliss.",
+    "Tags":"Stack Combo, Branding, Fun"
+  },
+  {
+    "Slogan":"Put your data on the CouchDB \u2014 it deserves a break.",
+    "Tags":"CouchDB, Chill, Fun"
+  },
+  {
+    "Slogan":"Decaf-TS + CouchDBDB: the most reclineed stack in tech.",
+    "Tags":"CouchDB, Coffee-themed, Calm"
+  },
+  {
+    "Slogan":"No stress, no schema \u2014 just smooth storage.",
+    "Tags":"NoSQL, Calm, Tech"
+  },
+  {
+    "Slogan":"Sit back. Your queries just got simpler.",
+    "Tags":"SQL-like, Chill, Productivity"
+  },
+  {
+    "Slogan":"Declarative indexes. Because you have better things to do.",
+    "Tags":"Indexing, DX, Witty"
+  },
+  {
+    "Slogan":"Query like it\u2019s SQL. Relax like it\u2019s NoSQL.",
+    "Tags":"SQL-like, CouchDB, Duality"
+  },
+  {
+    "Slogan":"Skip the manual queries. Keep the couch.",
+    "Tags":"CRUD-less, Chill, Fun"
+  },
+  {
+    "Slogan":"No setup. No stress. No problem.",
+    "Tags":"Declarative, Easy Setup, Calm"
+  },
+  {
+    "Slogan":"Database queries that feel like a nap in a hammock.",
+    "Tags":"SQL-like, Chill, Joy"
+  },
+  {
+    "Slogan":"Where your data chills and your dev flow soars.",
+    "Tags":"CouchDB, DevX, Chill"
+  },
+  {
+    "Slogan":"Let the indexes build themselves.",
+    "Tags":"Indexing, Productivity, Automation"
+  },
+  {
+    "Slogan":"CouchDBDB: for developers who like to lean back.",
+    "Tags":"Couch, Calm, Identity"
+  },
+  {
+    "Slogan":"CouchDB mode: ON. Query mode: AUTO.",
+    "Tags":"CouchDB, Indexing, Chill"
+  },
+  {
+    "Slogan":"Your backend\u2019s comfy recliner.",
+    "Tags":"Backend, Couch Metaphor, Humor"
+  },
+  {
+    "Slogan":"Sleep better knowing your queries just work.",
+    "Tags":"SQL-like, Productivity, Chill"
+  },
+  {
+    "Slogan":"The database that won\u2019t keep you up at night.",
+    "Tags":"CouchDB, Sleep, Calm"
+  },
+  {
+    "Slogan":"No caffeine needed when your queries write themselves.",
+    "Tags":"Indexing, Coffee-themed, Declarative"
+  },
+  {
+    "Slogan":"From query to chill in 0.01s.",
+    "Tags":"Performance, SQL-like, Couch Metaphor"
+  },
+  {
+    "Slogan":"manual queries is so last decade. Welcome to CouchDB mode.",
+    "Tags":"CRUD-less, Chill, Future"
+  },
+  {
+    "Slogan":"Decaf + CouchDB = backend bliss.",
+    "Tags":"Stack Combo, Branding, Fun"
+  }
+]
