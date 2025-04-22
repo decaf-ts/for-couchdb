@@ -38,8 +38,12 @@
       "useLongnameInNav": false,
       "navLinks": [
         {
+          "label": "Test Results",
+          "href": "workdocs/reports/html/test-report.html"
+        },
+        {
           "label": "Test Coverage",
-          "href": "workdocs/coverage"
+          "href": "workdocs/reports/coverage"
         },
         {
           "label": "Github Repository",

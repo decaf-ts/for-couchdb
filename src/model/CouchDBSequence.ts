@@ -12,7 +12,7 @@ export class Sequence extends BaseModel {
    * @see pk
    */
   @pk()
-  id?: string = undefined;
+  id!: string;
   /**
    * @summary the current value for the DBSequence
    * @prop current
@@ -22,7 +22,7 @@ export class Sequence extends BaseModel {
    */
   @required()
   @index()
-  current?: string | number = undefined;
+  current!: string | number;
 
   constructor(seq?: ModelArg<Sequence>) {
     super(seq);
