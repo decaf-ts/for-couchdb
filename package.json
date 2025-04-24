@@ -1,6 +1,6 @@
 {
   "name": "@decaf-ts/for-couchdb",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "template for ts projects",
   "type": "module",
   "exports": {
