@@ -256,7 +256,7 @@ export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
     return [tableName, id].join(CouchDBKeys.SEPARATOR);
   }
 
-  protected parseError(err: Error | string, reason?: string): BaseError {
+  parseError(err: Error | string, reason?: string): BaseError {
     return CouchDBAdapter.parseError(err, reason);
   }
 
