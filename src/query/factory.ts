@@ -31,8 +31,12 @@ import { CouchDBOperator } from "./constants";
 import { CouchDBAdapter } from "../adapter";
 import { MangoQuery, MangoSelector } from "../types";
 
-export class Factory<S> extends ClauseFactory<S, MangoQuery> {
-  constructor(adapter: CouchDBAdapter<S>) {
+export class Factory<S> extends ClauseFactory<
+  any,
+  MangoQuery,
+  CouchDBAdapter<any, any, any>
+> {
+  constructor(adapter: CouchDBAdapter<S, any, any>) {
     super(adapter);
   }
 

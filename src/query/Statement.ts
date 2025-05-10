@@ -1,4 +1,4 @@
-import { Adapter, Statement } from "@decaf-ts/core";
+import { Statement } from "@decaf-ts/core";
 import { findPrimaryKey, InternalError } from "@decaf-ts/db-decorators";
 import { Constructor } from "@decaf-ts/decorator-validation";
 import { CouchDBKeys } from "../constants";
@@ -6,9 +6,10 @@ import { parseSequenceValue } from "../sequences/utils";
 import { Paginator } from "@decaf-ts/core";
 import { CouchDBPaginator } from "./Paginator";
 import { MangoQuery } from "../types";
+import { CouchDBAdapter } from "../adapter";
 
-export class CouchDBStatement<Y> extends Statement<MangoQuery> {
-  constructor(adapter: Adapter<Y, MangoQuery>) {
+export class CouchDBStatement extends Statement<MangoQuery> {
+  constructor(adapter: CouchDBAdapter<any, any, any>) {
     super(adapter);
   }
 

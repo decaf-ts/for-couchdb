@@ -19,9 +19,12 @@ import { CouchDBRepository } from "../interfaces";
  * @category Sequences
  */
 export class CouchDBSequence extends Sequence {
-  protected repo: CouchDBRepository<Seq, any>;
+  protected repo: CouchDBRepository<Seq, any, any>;
 
-  constructor(options: SequenceOptions, adapter: Adapter<any, MangoQuery>) {
+  constructor(
+    options: SequenceOptions,
+    adapter: Adapter<any, MangoQuery, any, any>
+  ) {
     super(options);
     this.repo = Repository.forModel(Seq, adapter.flavour);
   }

@@ -12,6 +12,7 @@ import {
   ConnectionError,
   Repository,
   User,
+  Context,
 } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
@@ -20,6 +21,7 @@ import {
   InternalError,
   NotFoundError,
   prefixMethod,
+  RepositoryFlags,
 } from "@decaf-ts/db-decorators";
 import "reflect-metadata";
 import { CouchDBStatement } from "./query/Statement";
@@ -30,7 +32,11 @@ import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { MangoOperator, MangoQuery, MangoSelector } from "./types";
 
-export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
+export abstract class CouchDBAdapter<
+  S,
+  C extends Context<F>,
+  F extends RepositoryFlags,
+> extends Adapter<S, MangoQuery, F, C> {
   protected factory?: Factory<S>;
 
   protected constructor(scope: S, flavour: string) {
@@ -41,7 +47,7 @@ export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
     });
   }
 
-  get Clauses(): ClauseFactory<S, MangoQuery> {
+  get Clauses(): ClauseFactory<S, MangoQuery, CouchDBAdapter<S, C, F>> {
     if (!this.factory) this.factory = new Factory(this);
     return this.factory;
   }

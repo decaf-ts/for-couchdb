@@ -4,7 +4,6 @@ import { CouchDBKeys } from "../constants";
 import { Repository } from "@decaf-ts/core";
 import { MangoQuery } from "../types";
 
-// noinspection JSAnnotator
 export class CouchDBFromClause<M extends Model> extends FromClause<
   MangoQuery,
   M
