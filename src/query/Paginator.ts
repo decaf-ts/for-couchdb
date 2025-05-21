@@ -52,6 +52,7 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
     //   //   .from(target)
     //   //   .execute<number>();
     // }
+    this.validatePage(page);
 
     if (page !== 1) {
       if (!this.bookMark)
@@ -66,16 +67,17 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
 
     const { docs, bookmark, warning } = rawResult;
     if (warning) console.warn(warning);
+    if (!target) throw new PagingError("No statement target defined");
+    const pkDef = findPrimaryKey(new target()) as {
+      id: string;
+      props: SequenceOptions;
+    };
     const results =
       statement.fields && statement.fields.length
         ? docs // has fields means its not full model
         : docs.map((d: any) => {
             //no fields means we need to revert to saving process
             if (!target) throw new PagingError("No statement target defined");
-            const pkDef = findPrimaryKey(new target()) as {
-              id: string;
-              props: SequenceOptions;
-            };
             const pk = pkDef.id;
             const originalId = d._id.split(DefaultSeparator);
             originalId.splice(0, 1); // remove the table name
