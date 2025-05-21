@@ -21,7 +21,11 @@ import { ValuesClause } from "@decaf-ts/core";
 import { InsertClause } from "@decaf-ts/core";
 import { CouchDBFromClause } from "./FromClause";
 import { ModelArg, Model } from "@decaf-ts/decorator-validation";
-import { InternalError } from "@decaf-ts/db-decorators";
+import {
+  Context,
+  InternalError,
+  RepositoryFlags,
+} from "@decaf-ts/db-decorators";
 import { CouchDBInsertClause } from "./InsertClause";
 import { CouchDBStatement } from "./Statement";
 import { CouchDBWhereClause } from "./WhereClause";
@@ -31,8 +35,12 @@ import { CouchDBOperator } from "./constants";
 import { CouchDBAdapter } from "../adapter";
 import { MangoQuery, MangoSelector } from "../types";
 
-export class Factory<S> extends ClauseFactory<S, MangoQuery> {
-  constructor(adapter: CouchDBAdapter<S>) {
+export class Factory<
+  Y,
+  F extends RepositoryFlags,
+  C extends Context<F>,
+> extends ClauseFactory<Y, MangoQuery, CouchDBAdapter<Y, F, C>> {
+  constructor(adapter: CouchDBAdapter<Y, F, C>) {
     super(adapter);
   }
 

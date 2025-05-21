@@ -17,9 +17,11 @@ import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
   ConflictError,
+  Context,
   InternalError,
   NotFoundError,
   prefixMethod,
+  RepositoryFlags,
 } from "@decaf-ts/db-decorators";
 import "reflect-metadata";
 import { CouchDBStatement } from "./query/Statement";
@@ -30,10 +32,14 @@ import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { MangoOperator, MangoQuery, MangoSelector } from "./types";
 
-export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
-  protected factory?: Factory<S>;
+export abstract class CouchDBAdapter<
+  Y,
+  F extends RepositoryFlags,
+  C extends Context<F>,
+> extends Adapter<Y, MangoQuery, F, C> {
+  protected factory?: Factory<Y, F, C>;
 
-  protected constructor(scope: S, flavour: string) {
+  protected constructor(scope: Y, flavour: string) {
     super(scope, flavour);
     [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
       const name = m.name;
@@ -41,9 +47,9 @@ export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
     });
   }
 
-  get Clauses(): ClauseFactory<S, MangoQuery> {
+  get Clauses(): ClauseFactory<Y, MangoQuery, typeof this> {
     if (!this.factory) this.factory = new Factory(this);
-    return this.factory;
+    return this.factory as ClauseFactory<Y, MangoQuery, typeof this>;
   }
 
   Query<M extends Model>(): Query<MangoQuery, M> {
@@ -107,8 +113,6 @@ export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
   protected abstract index<M extends Model>(
     ...models: Constructor<M>[]
   ): Promise<void>;
-
-  protected abstract user(): Promise<User>;
 
   abstract raw<V>(rawInput: MangoQuery, process: boolean): Promise<V>;
 
@@ -256,7 +260,7 @@ export abstract class CouchDBAdapter<S> extends Adapter<S, MangoQuery> {
     return [tableName, id].join(CouchDBKeys.SEPARATOR);
   }
 
-  protected parseError(err: Error | string, reason?: string): BaseError {
+  parseError(err: Error | string, reason?: string): BaseError {
     return CouchDBAdapter.parseError(err, reason);
   }
 

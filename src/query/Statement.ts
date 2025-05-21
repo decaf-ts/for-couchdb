@@ -8,7 +8,7 @@ import { CouchDBPaginator } from "./Paginator";
 import { MangoQuery } from "../types";
 
 export class CouchDBStatement<Y> extends Statement<MangoQuery> {
-  constructor(adapter: Adapter<Y, MangoQuery>) {
+  constructor(adapter: Adapter<Y, MangoQuery, any, any>) {
     super(adapter);
   }
 
@@ -66,7 +66,9 @@ export class CouchDBStatement<Y> extends Statement<MangoQuery> {
     const pkAttr = pkDef.id;
     const type = pkDef.props.type;
     if (Array.isArray(results))
-      return results.map((r) => this.processRecord(r, pkAttr, type)) as R;
-    return this.processRecord(results, pkAttr, type) as R;
+      return results.map((r) =>
+        this.processRecord(r, pkAttr as string, type)
+      ) as R;
+    return this.processRecord(results, pkAttr as string, type) as R;
   }
 }
