@@ -11,7 +11,6 @@ import {
   Condition,
   ConnectionError,
   Repository,
-  User,
 } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
