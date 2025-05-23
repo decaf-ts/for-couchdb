@@ -1,14 +1,8 @@
 import {
   Adapter,
   Sequence,
-  SequenceOptions,
+  type SequenceOptions,
   PersistenceKeys,
-  Operator,
-  GroupOperator,
-  Statement,
-  Query,
-  ClauseFactory,
-  Condition,
   ConnectionError,
   Repository,
 } from "@decaf-ts/core";
@@ -23,83 +17,33 @@ import {
   RepositoryFlags,
 } from "@decaf-ts/db-decorators";
 import "reflect-metadata";
-import { CouchDBStatement } from "./query/Statement";
-import { Factory } from "./query";
-import { translateOperators } from "./query/translate";
+
 import { CouchDBSequence } from "./sequences/Sequence";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
-import { MangoOperator, MangoQuery, MangoSelector } from "./types";
+import { MangoQuery } from "./types";
+import { CouchDBStatement } from "./query";
+import { final } from "@decaf-ts/core";
 
 export abstract class CouchDBAdapter<
   Y,
   F extends RepositoryFlags,
   C extends Context<F>,
 > extends Adapter<Y, MangoQuery, F, C> {
-  protected factory?: Factory<Y, F, C>;
-
-  protected constructor(scope: Y, flavour: string) {
-    super(scope, flavour);
+  protected constructor(scope: Y, flavour: string, alias?: string) {
+    super(scope, flavour, alias);
     [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
       const name = m.name;
       prefixMethod(this, m, (this as any)[name + "Prefix"]);
     });
   }
 
-  get Clauses(): ClauseFactory<Y, MangoQuery, typeof this> {
-    if (!this.factory) this.factory = new Factory(this);
-    return this.factory as ClauseFactory<Y, MangoQuery, typeof this>;
-  }
-
-  Query<M extends Model>(): Query<MangoQuery, M> {
-    return super.Query();
-  }
-
-  get Statement(): Statement<MangoQuery> {
+  @final()
+  Statement<M extends Model>(): CouchDBStatement<M, any> {
     return new CouchDBStatement(this);
   }
 
-  parseCondition(condition: Condition): MangoQuery {
-    function merge(
-      op: MangoOperator,
-      obj1: MangoSelector,
-      obj2: MangoSelector
-    ): MangoQuery {
-      const result: MangoQuery = { selector: {} as MangoSelector };
-      result.selector[op] = [obj1, obj2];
-      return result;
-    }
-
-    const { attr1, operator, comparison } = condition as unknown as {
-      attr1: string | Condition;
-      operator: Operator | GroupOperator;
-      comparison: any;
-    };
-
-    let op: MangoSelector = {} as MangoSelector;
-    if (
-      [GroupOperator.AND, GroupOperator.OR, Operator.NOT].indexOf(
-        operator as GroupOperator
-      ) === -1
-    ) {
-      op[attr1 as string] = {} as MangoSelector;
-      (op[attr1 as string] as MangoSelector)[translateOperators(operator)] =
-        comparison;
-    } else if (operator === Operator.NOT) {
-      op = this.parseCondition(attr1 as Condition).selector as MangoSelector;
-      op[translateOperators(Operator.NOT)] = {} as MangoSelector;
-      (op[translateOperators(Operator.NOT)] as MangoSelector)[
-        (attr1 as unknown as { attr1: string }).attr1
-      ] = comparison;
-    } else {
-      const op1: any = this.parseCondition(attr1 as Condition).selector;
-      const op2: any = this.parseCondition(comparison as Condition).selector;
-      op = merge(translateOperators(operator), op1, op2).selector;
-    }
-
-    return { selector: op };
-  }
-
+  @final()
   async Sequence(options: SequenceOptions): Promise<Sequence> {
     return new CouchDBSequence(options, this);
   }
@@ -113,8 +57,9 @@ export abstract class CouchDBAdapter<
     ...models: Constructor<M>[]
   ): Promise<void>;
 
-  abstract raw<V>(rawInput: MangoQuery, process: boolean): Promise<V>;
+  abstract raw<R>(rawInput: MangoQuery, docsOnly: boolean): Promise<R>;
 
+  @final()
   protected assignMetadata(
     model: Record<string, any>,
     rev: string
@@ -128,6 +73,7 @@ export abstract class CouchDBAdapter<
     return model;
   }
 
+  @final()
   protected assignMultipleMetadata(
     models: Record<string, any>[],
     revs: string[]
@@ -139,6 +85,7 @@ export abstract class CouchDBAdapter<
     return models;
   }
 
+  @final()
   protected createPrefix(
     tableName: string,
     id: string | number,
@@ -157,6 +104,7 @@ export abstract class CouchDBAdapter<
     model: Record<string, any>
   ): Promise<Record<string, any>>;
 
+  @final()
   protected createAllPrefix(
     tableName: string,
     ids: string[] | number[],
@@ -191,6 +139,7 @@ export abstract class CouchDBAdapter<
     ids: (string | number | bigint)[]
   ): Promise<Record<string, any>[]>;
 
+  @final()
   updatePrefix(
     tableName: string,
     id: string | number,
@@ -215,6 +164,7 @@ export abstract class CouchDBAdapter<
     model: Record<string, any>
   ): Promise<Record<string, any>>;
 
+  @final()
   protected updateAllPrefix(
     tableName: string,
     ids: string[] | number[],

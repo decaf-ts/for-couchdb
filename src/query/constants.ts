@@ -1,5 +1,7 @@
 import { MangoOperator } from "../types";
 
+export const CouchDBQueryLimit = 250;
+
 export const CouchDBOperator: Record<string, MangoOperator> = {
   EQUAL: "$eq",
   DIFFERENT: "$ne",

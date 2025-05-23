@@ -1,9 +1,7 @@
-import { sf } from "@decaf-ts/decorator-validation";
 import { Sequence as Seq } from "../model/CouchDBSequence";
 import { InternalError, NotFoundError } from "@decaf-ts/db-decorators";
 import { Adapter, Repository, SequenceOptions } from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
-import { parseSequenceValue } from "./utils";
 import { MangoQuery } from "../types";
 import { CouchDBRepository } from "../interfaces";
 
@@ -46,22 +44,14 @@ export class CouchDBSequence extends Sequence {
           );
         try {
           return this.parse(startWith);
-        } catch (e: any) {
+        } catch (e: unknown) {
           throw new InternalError(
-            sf(
-              "Failed to parse initial value for sequence {0}: {1}",
-              startWith.toString(),
-              e
-            )
+            `Failed to parse initial value for sequence ${startWith}: ${e}`
           );
         }
       }
       throw new InternalError(
-        sf(
-          "Failed to retrieve current value for sequence {0}: {1}",
-          name as string,
-          e
-        )
+        `Failed to retrieve current value for sequence ${name}: ${e}`
       );
     }
   }
@@ -73,7 +63,7 @@ export class CouchDBSequence extends Sequence {
    * @param value
    */
   private parse(value: string | number | bigint): string | number | bigint {
-    return parseSequenceValue(this.options.type, value);
+    return Sequence.parseValue(this.options.type, value);
   }
 
   /**

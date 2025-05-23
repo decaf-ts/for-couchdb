@@ -1,18 +1,18 @@
-import {
-  Paginator,
-  PagingError,
-  SequenceOptions,
-  Statement,
-} from "@decaf-ts/core";
+import { Paginator, PagingError, Sequence } from "@decaf-ts/core";
 import {
   DefaultSeparator,
   findPrimaryKey,
   InternalError,
 } from "@decaf-ts/db-decorators";
-import { parseSequenceValue } from "../sequences/utils";
 import { MangoQuery, MangoResponse } from "../types";
+import { Constructor, Model } from "@decaf-ts/decorator-validation";
+import { CouchDBAdapter } from "../adapter";
 
-export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
+export class CouchDBPaginator<M extends Model, R> extends Paginator<
+  M,
+  R,
+  MangoQuery
+> {
   private bookMark?: string;
 
   get total(): number {
@@ -26,11 +26,12 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
   }
 
   constructor(
-    statement: Statement<MangoQuery>,
+    adapter: CouchDBAdapter<any, any, any>,
+    query: MangoQuery,
     size: number,
-    rawStatement: MangoQuery
+    clazz: Constructor<M>
   ) {
-    super(statement, size, rawStatement);
+    super(adapter, query, size, clazz);
   }
 
   protected prepare(rawStatement: MangoQuery): MangoQuery {
@@ -42,9 +43,9 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
     return query;
   }
 
-  async page(page: number = 1, ...args: any[]): Promise<V[]> {
+  async page(page: number = 1): Promise<R[]> {
     const statement = Object.assign({}, this.statement);
-    const target = this.stat.getTarget();
+
     // if (!this._recordCount || !this._totalPages) {
     //   // this._recordCount = await this.adapter
     //   //   .Query()
@@ -61,31 +62,25 @@ export class CouchDBPaginator<V> extends Paginator<V, MangoQuery> {
     }
     const rawResult: MangoResponse<any> = await this.adapter.raw(
       statement,
-      false,
-      ...args
+      false
     );
 
     const { docs, bookmark, warning } = rawResult;
     if (warning) console.warn(warning);
-    if (!target) throw new PagingError("No statement target defined");
-    const pkDef = findPrimaryKey(new target()) as {
-      id: string;
-      props: SequenceOptions;
-    };
+    if (!this.clazz) throw new PagingError("No statement target defined");
+    const pkDef = findPrimaryKey(new this.clazz());
     const results =
       statement.fields && statement.fields.length
         ? docs // has fields means its not full model
         : docs.map((d: any) => {
             //no fields means we need to revert to saving process
-            if (!target) throw new PagingError("No statement target defined");
-            const pk = pkDef.id;
             const originalId = d._id.split(DefaultSeparator);
             originalId.splice(0, 1); // remove the table name
             return this.adapter.revert(
               d,
-              target,
-              pk,
-              parseSequenceValue(
+              this.clazz,
+              pkDef.id,
+              Sequence.parseValue(
                 pkDef.props.type,
                 originalId.join(DefaultSeparator)
               )
