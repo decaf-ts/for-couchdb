@@ -57,7 +57,7 @@ export abstract class CouchDBAdapter<
     ...models: Constructor<M>[]
   ): Promise<void>;
 
-  abstract raw<R>(rawInput: MangoQuery, docsOnly: boolean): Promise<R>;
+  abstract override raw<R>(rawInput: MangoQuery, docsOnly: boolean): Promise<R>;
 
   @final()
   protected assignMetadata(
@@ -98,7 +98,7 @@ export abstract class CouchDBAdapter<
     return [tableName, id, record];
   }
 
-  abstract create(
+  abstract override create(
     tableName: string,
     id: string | number,
     model: Record<string, any>
@@ -123,18 +123,18 @@ export abstract class CouchDBAdapter<
     return [tableName, ids, records];
   }
 
-  abstract createAll(
+  abstract override createAll(
     tableName: string,
     ids: string[] | number[],
     models: Record<string, any>[]
   ): Promise<Record<string, any>[]>;
 
-  abstract read(
+  abstract override read(
     tableName: string,
     id: string | number
   ): Promise<Record<string, any>>;
 
-  abstract readAll(
+  abstract override readAll(
     tableName: string,
     ids: (string | number | bigint)[]
   ): Promise<Record<string, any>[]>;
@@ -158,7 +158,7 @@ export abstract class CouchDBAdapter<
     return [tableName, id, record];
   }
 
-  abstract update(
+  abstract override update(
     tableName: string,
     id: string | number,
     model: Record<string, any>
@@ -189,18 +189,18 @@ export abstract class CouchDBAdapter<
     return [tableName, ids, records];
   }
 
-  abstract updateAll(
+  abstract override updateAll(
     tableName: string,
     ids: string[] | number[],
     models: Record<string, any>[]
   ): Promise<Record<string, any>[]>;
 
-  abstract delete(
+  abstract override delete(
     tableName: string,
     id: string | number
   ): Promise<Record<string, any>>;
 
-  abstract deleteAll(
+  abstract override deleteAll(
     tableName: string,
     ids: (string | number | bigint)[]
   ): Promise<Record<string, any>[]>;
@@ -213,7 +213,7 @@ export abstract class CouchDBAdapter<
     return CouchDBAdapter.parseError(err, reason);
   }
 
-  protected isReserved(attr: string): boolean {
+  protected override isReserved(attr: string): boolean {
     return !!attr.match(reservedAttributes);
   }
 

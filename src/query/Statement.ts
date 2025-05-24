@@ -162,7 +162,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
     return r;
   }
 
-  async raw<R>(rawInput: MangoQuery): Promise<R> {
+  override async raw<R>(rawInput: MangoQuery): Promise<R> {
     const results: any[] = await this.adapter.raw(rawInput, true);
 
     const pkDef = findPrimaryKey(new this.fromSelector());

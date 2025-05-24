@@ -15,11 +15,11 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
 > {
   private bookMark?: string;
 
-  get total(): number {
+  override get total(): number {
     throw new InternalError(`The total pages api is not available for couchdb`);
   }
 
-  get count(): number {
+  override get count(): number {
     throw new InternalError(
       `The record count api is not available for couchdb`
     );
