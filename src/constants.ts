@@ -1,7 +1,7 @@
 export const reservedAttributes = /^_.*$/g;
 
 export const CouchDBKeys = {
-  SEPARATOR: "_",
+  SEPARATOR: "__",
   ID: "_id",
   REV: "_rev",
   DELETED: "_deleted",

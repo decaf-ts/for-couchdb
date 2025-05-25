@@ -7,6 +7,7 @@ import {
 import { MangoQuery, MangoResponse } from "../types";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { CouchDBAdapter } from "../adapter";
+import { CouchDBKeys } from "../constants";
 
 export class CouchDBPaginator<M extends Model, R> extends Paginator<
   M,
@@ -74,7 +75,7 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
         ? docs // has fields means its not full model
         : docs.map((d: any) => {
             //no fields means we need to revert to saving process
-            const originalId = d._id.split(DefaultSeparator);
+            const originalId = d._id.split(CouchDBKeys.SEPARATOR);
             originalId.splice(0, 1); // remove the table name
             return this.adapter.revert(
               d,
@@ -82,7 +83,7 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
               pkDef.id,
               Sequence.parseValue(
                 pkDef.props.type,
-                originalId.join(DefaultSeparator)
+                originalId.join(CouchDBKeys.SEPARATOR)
               )
             );
           });

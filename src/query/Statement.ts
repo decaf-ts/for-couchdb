@@ -149,7 +149,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
     sequenceType: "Number" | "BigInt" | undefined
   ) {
     if (r[CouchDBKeys.ID]) {
-      const [, ...keyArgs] = r[CouchDBKeys.ID].split("_");
+      const [, ...keyArgs] = r[CouchDBKeys.ID].split(CouchDBKeys.SEPARATOR);
 
       const id = keyArgs.join("_");
       return this.adapter.revert(

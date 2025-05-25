@@ -101,7 +101,8 @@ export abstract class CouchDBAdapter<
   abstract override create(
     tableName: string,
     id: string | number,
-    model: Record<string, any>
+    model: Record<string, any>,
+    ...args: any[]
   ): Promise<Record<string, any>>;
 
   @final()
@@ -126,17 +127,20 @@ export abstract class CouchDBAdapter<
   abstract override createAll(
     tableName: string,
     ids: string[] | number[],
-    models: Record<string, any>[]
+    models: Record<string, any>[],
+    ...args: any[]
   ): Promise<Record<string, any>[]>;
 
   abstract override read(
     tableName: string,
-    id: string | number
+    id: string | number,
+    ...args: any[]
   ): Promise<Record<string, any>>;
 
   abstract override readAll(
     tableName: string,
-    ids: (string | number | bigint)[]
+    ids: (string | number | bigint)[],
+    ...args: any[]
   ): Promise<Record<string, any>[]>;
 
   @final()
@@ -161,7 +165,8 @@ export abstract class CouchDBAdapter<
   abstract override update(
     tableName: string,
     id: string | number,
-    model: Record<string, any>
+    model: Record<string, any>,
+    ...args: any[]
   ): Promise<Record<string, any>>;
 
   @final()
@@ -192,17 +197,20 @@ export abstract class CouchDBAdapter<
   abstract override updateAll(
     tableName: string,
     ids: string[] | number[],
-    models: Record<string, any>[]
+    models: Record<string, any>[],
+    ...args: any[]
   ): Promise<Record<string, any>[]>;
 
   abstract override delete(
     tableName: string,
-    id: string | number
+    id: string | number,
+    ...args: any[]
   ): Promise<Record<string, any>>;
 
   abstract override deleteAll(
     tableName: string,
-    ids: (string | number | bigint)[]
+    ids: (string | number | bigint)[],
+    ...args: any[]
   ): Promise<Record<string, any>[]>;
 
   protected generateId(tableName: string, id: string | number) {
