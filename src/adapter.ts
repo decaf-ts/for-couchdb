@@ -124,24 +124,11 @@ export abstract class CouchDBAdapter<
     return [tableName, ids, records];
   }
 
-  abstract override createAll(
-    tableName: string,
-    ids: string[] | number[],
-    models: Record<string, any>[],
-    ...args: any[]
-  ): Promise<Record<string, any>[]>;
-
   abstract override read(
     tableName: string,
     id: string | number,
     ...args: any[]
   ): Promise<Record<string, any>>;
-
-  abstract override readAll(
-    tableName: string,
-    ids: (string | number | bigint)[],
-    ...args: any[]
-  ): Promise<Record<string, any>[]>;
 
   @final()
   updatePrefix(
@@ -194,24 +181,11 @@ export abstract class CouchDBAdapter<
     return [tableName, ids, records];
   }
 
-  abstract override updateAll(
-    tableName: string,
-    ids: string[] | number[],
-    models: Record<string, any>[],
-    ...args: any[]
-  ): Promise<Record<string, any>[]>;
-
   abstract override delete(
     tableName: string,
     id: string | number,
     ...args: any[]
   ): Promise<Record<string, any>>;
-
-  abstract override deleteAll(
-    tableName: string,
-    ids: (string | number | bigint)[],
-    ...args: any[]
-  ): Promise<Record<string, any>[]>;
 
   protected generateId(tableName: string, id: string | number) {
     return [tableName, id].join(CouchDBKeys.SEPARATOR);
