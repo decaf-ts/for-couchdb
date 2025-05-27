@@ -1,9 +1,5 @@
 import { Paginator, PagingError, Sequence } from "@decaf-ts/core";
-import {
-  DefaultSeparator,
-  findPrimaryKey,
-  InternalError,
-} from "@decaf-ts/db-decorators";
+import { findPrimaryKey, InternalError } from "@decaf-ts/db-decorators";
 import { MangoQuery, MangoResponse } from "../types";
 import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { CouchDBAdapter } from "../adapter";
