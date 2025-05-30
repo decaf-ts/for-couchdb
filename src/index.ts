@@ -9,22 +9,14 @@ export * from "./types";
 export * from "./utils";
 
 /**
- * @summary Module summary
- * @description Module description
- * @module ts-workspace
+ * @description CouchDB adapter for Decaf.ts
+ * @summary A TypeScript adapter for CouchDB database operations, providing a seamless integration with the Decaf.ts framework. This module includes classes, interfaces, and utilities for working with CouchDB databases, including support for Mango queries, document operations, and sequence management.
+ * @module for-couchdb
  */
 
 /**
- * @summary Namespace summary
- * @description Namespace description
- * @namespace Namespace
- * @memberOf module:ts-workspace
- */
-
-/**
- * @summary stores the current package version
- * @description this is how you should document a constant
+ * @description Stores the current package version
+ * @summary The version string of the for-couchdb package
  * @const VERSION
- * @memberOf module:ts-workspace
  */
 export const VERSION = "##VERSION##";

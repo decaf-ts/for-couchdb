@@ -1,5 +1,11 @@
-/** Mango response.
- * @see Docs: {@link https://docs.couchdb.org/en/latest/api/database/find.html#db-find}  */
+/**
+ * @description Response from a CouchDB Mango query
+ * @summary Contains the matching documents and additional metadata about the query execution
+ * @interface MangoResponse
+ * @template D - The document type
+ * @memberOf module:for-couchdb
+ * @see Docs: {@link https://docs.couchdb.org/en/latest/api/database/find.html#db-find}
+ */
 export interface MangoResponse<D> {
   /** Array of documents matching the search.
    *
@@ -19,8 +25,13 @@ export interface MangoResponse<D> {
   execution_stats?: MangoExecutionStats;
 }
 
-/** Mango execution stats.
- * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#execution-statistics} */
+/**
+ * @description Statistics about the execution of a Mango query
+ * @summary Provides detailed metrics about query execution including document and key examination counts
+ * @interface MangoExecutionStats
+ * @memberOf module:for-couchdb
+ * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#execution-statistics}
+ */
 export interface MangoExecutionStats {
   /** Number of index keys examined. Currently always 0. */
   total_keys_examined: number;
@@ -42,8 +53,13 @@ export interface MangoExecutionStats {
   execution_time_ms: number;
 }
 
-/** Mango create index parameters.
- * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#db-index} */
+/**
+ * @description Parameters for creating a CouchDB Mango index
+ * @summary Defines the structure and configuration for a new Mango index
+ * @interface CreateIndexRequest
+ * @memberOf module:for-couchdb
+ * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#db-index}
+ */
 export interface CreateIndexRequest {
   /** JSON object describing the index to create */
   index: {
@@ -69,7 +85,20 @@ export interface CreateIndexRequest {
   partitioned?: boolean;
 }
 
+/**
+ * @description Represents the possible value types in a Mango query
+ * @summary Union type of all possible value types that can be used in Mango queries
+ * @typedef {(number|string|Date|boolean|object|null)} MangoValue
+ * @memberOf module:for-couchdb
+ */
 export type MangoValue = number | string | Date | boolean | object | null;
+
+/**
+ * @description Operators available in Mango queries
+ * @summary Union type of all possible operators that can be used in Mango queries
+ * @typedef {string} MangoOperator
+ * @memberOf module:for-couchdb
+ */
 export type MangoOperator =
   | "$lt"
   | "$lte"
@@ -91,8 +120,13 @@ export type MangoOperator =
   | "$all"
   | "$allMatch"
   | "$elemMatch";
-/** Mango selector syntax.
- * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#selector-syntax} */
+/**
+ * @description Represents a CouchDB Mango query selector
+ * @summary Type for defining query conditions in Mango queries
+ * @typedef {Object} MangoSelector
+ * @memberOf module:for-couchdb
+ * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#selector-syntax}
+ */
 export type MangoSelector = {
   [K in MangoOperator | string]:
     | MangoSelector
@@ -101,12 +135,22 @@ export type MangoSelector = {
     | MangoValue[];
 };
 
-/** Mango sort syntax
- * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#sort-syntax} */
+/**
+ * @description Represents a sort order specification in Mango queries
+ * @summary Type for defining sort order in Mango queries
+ * @typedef {(string|string[]|Object)} SortOrder
+ * @memberOf module:for-couchdb
+ * @see Docs: {@link http://docs.couchdb.org/en/latest/api/database/find.html#sort-syntax}
+ */
 export type SortOrder = string | string[] | { [key: string]: "asc" | "desc" };
 
-/** Mango query syntax.
- * @see Docs: {@link https://docs.couchdb.org/en/latest/api/database/find.html#db-find}  */
+/**
+ * @description Represents a CouchDB Mango query
+ * @summary Interface for defining complete Mango queries with selectors, sorting, pagination, and other options
+ * @interface MangoQuery
+ * @memberOf module:for-couchdb
+ * @see Docs: {@link https://docs.couchdb.org/en/latest/api/database/find.html#db-find}
+ */
 export interface MangoQuery {
   /** JSON object describing criteria used to select documents. */
   selector: MangoSelector;
