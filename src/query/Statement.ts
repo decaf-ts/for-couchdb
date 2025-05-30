@@ -26,7 +26,7 @@ import { findPrimaryKey, InternalError } from "@decaf-ts/db-decorators";
  * @summary Provides a fluent interface for building CouchDB Mango queries with type safety
  * @template M - The model type that extends Model
  * @template R - The result type
- * @param {CouchDBAdapter<any, any, any>} adapter - The CouchDB adapter
+ * @param adapter - The CouchDB adapter
  * @class CouchDBStatement
  * @example
  * // Example of using CouchDBStatement
@@ -46,11 +46,6 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
   M,
   R
 > {
-  /**
-   * @description Creates a new CouchDBStatement instance
-   * @summary Initializes a statement builder for CouchDB Mango queries
-   * @param {CouchDBAdapter<any, any, any>} adapter - The CouchDB adapter
-   */
   constructor(adapter: CouchDBAdapter<any, any, any>) {
     super(adapter);
   }
@@ -236,7 +231,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
    * @description Processes a record from CouchDB
    * @summary Extracts the ID from a CouchDB document and reverts it to a model instance
    * @param {any} r - The raw record from CouchDB
-   * @param {keyof M} pkAttr - The primary key attribute of the model
+   * @param pkAttr - The primary key attribute of the model
    * @param {"Number" | "BigInt" | undefined} sequenceType - The type of the sequence
    * @return {any} The processed record
    */

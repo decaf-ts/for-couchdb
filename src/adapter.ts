@@ -41,28 +41,28 @@ import { final } from "@decaf-ts/core";
  *   constructor(scope: MyScope) {
  *     super(scope, 'my-couchdb', 'my-alias');
  *   }
- *   
+ *
  *   // Implement abstract methods
  *   async index<M extends Model>(...models: Constructor<M>[]): Promise<void> {
  *     // Implementation
  *   }
- *   
+ *
  *   async raw<R>(rawInput: MangoQuery, docsOnly: boolean): Promise<R> {
  *     // Implementation
  *   }
- *   
+ *
  *   async create(tableName: string, id: string | number, model: Record<string, any>, ...args: any[]): Promise<Record<string, any>> {
  *     // Implementation
  *   }
- *   
+ *
  *   async read(tableName: string, id: string | number, ...args: any[]): Promise<Record<string, any>> {
  *     // Implementation
  *   }
- *   
+ *
  *   async update(tableName: string, id: string | number, model: Record<string, any>, ...args: any[]): Promise<Record<string, any>> {
  *     // Implementation
  *   }
- *   
+ *
  *   async delete(tableName: string, id: string | number, ...args: any[]): Promise<Record<string, any>> {
  *     // Implementation
  *   }
@@ -158,9 +158,9 @@ export abstract class CouchDBAdapter<
   /**
    * @description Assigns metadata to multiple models
    * @summary Adds revision metadata to multiple models as non-enumerable properties
-   * @param {Record<string, any>[]} models - The models to assign metadata to
+   * @param models - The models to assign metadata to
    * @param {string[]} revs - The revision strings to assign
-   * @return {Record<string, any>[]} The models with metadata assigned
+   * @return The models with metadata assigned
    */
   @final()
   protected assignMultipleMetadata(
@@ -180,7 +180,7 @@ export abstract class CouchDBAdapter<
    * @param {string} tableName - The name of the table
    * @param {string|number} id - The ID of the record
    * @param {Record<string, any>} model - The model to prepare
-   * @return {[string, string|number, Record<string, any>]} A tuple containing the tableName, id, and prepared record
+   * @return A tuple containing the tableName, id, and prepared record
    */
   @final()
   protected createPrefix(
@@ -216,8 +216,8 @@ export abstract class CouchDBAdapter<
    * @summary Adds necessary CouchDB fields to multiple records before creation
    * @param {string} tableName - The name of the table
    * @param {string[]|number[]} ids - The IDs of the records
-   * @param {Record<string, any>[]} models - The models to prepare
-   * @return {[string, string[]|number[], Record<string, any>[]]} A tuple containing the tableName, ids, and prepared records
+   * @param models - The models to prepare
+   * @return A tuple containing the tableName, ids, and prepared records
    * @throws {InternalError} If ids and models arrays have different lengths
    */
   @final()
@@ -258,8 +258,8 @@ export abstract class CouchDBAdapter<
    * @summary Adds necessary CouchDB fields to a record before update
    * @param {string} tableName - The name of the table
    * @param {string|number} id - The ID of the record
-   * @param {Record<string, any>} model - The model to prepare
-   * @return {[string, string|number, Record<string, any>]} A tuple containing the tableName, id, and prepared record
+   * @param model - The model to prepare
+   * @return A tuple containing the tableName, id, and prepared record
    * @throws {InternalError} If no revision number is found in the model
    */
   @final()
@@ -287,8 +287,8 @@ export abstract class CouchDBAdapter<
    * @param {string} tableName - The name of the table
    * @param {string|number} id - The ID of the record
    * @param {Record<string, any>} model - The model to update
-   * @param {...any[]} args - Additional arguments
-   * @return {Promise<Record<string, any>>} A promise that resolves to the updated record
+   * @param {any[]} args - Additional arguments
+   * @return A promise that resolves to the updated record
    */
   abstract override update(
     tableName: string,
@@ -302,8 +302,8 @@ export abstract class CouchDBAdapter<
    * @summary Adds necessary CouchDB fields to multiple records before update
    * @param {string} tableName - The name of the table
    * @param {string[]|number[]} ids - The IDs of the records
-   * @param {Record<string, any>[]} models - The models to prepare
-   * @return {[string, string[]|number[], Record<string, any>[]]} A tuple containing the tableName, ids, and prepared records
+   * @param models - The models to prepare
+   * @return A tuple containing the tableName, ids, and prepared records
    * @throws {InternalError} If ids and models arrays have different lengths or if no revision number is found in a model
    */
   @final()
@@ -336,8 +336,8 @@ export abstract class CouchDBAdapter<
    * @summary Abstract method that must be implemented to delete a record
    * @param {string} tableName - The name of the table
    * @param {string|number} id - The ID of the record
-   * @param {...any[]} args - Additional arguments
-   * @return {Promise<Record<string, any>>} A promise that resolves to the deleted record
+   * @param {any[]} args - Additional arguments
+   * @return A promise that resolves to the deleted record
    */
   abstract override delete(
     tableName: string,
@@ -388,7 +388,7 @@ export abstract class CouchDBAdapter<
    *   participant Caller
    *   participant parseError
    *   participant ErrorTypes
-   *   
+   *
    *   Caller->>parseError: err, reason
    *   Note over parseError: Check if err is already a BaseError
    *   alt err is BaseError
@@ -409,7 +409,7 @@ export abstract class CouchDBAdapter<
    *   else
    *     Note over parseError: Use err.message as code
    *   end
-   *   
+   *
    *   Note over parseError: Switch on code
    *   alt code is 401, 412, or 409
    *     parseError->>ErrorTypes: new ConflictError(reason)

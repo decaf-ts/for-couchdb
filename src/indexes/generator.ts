@@ -18,6 +18,7 @@ import { CreateIndexRequest } from "../types";
  * @param {string[]} [compositions] - Optional additional attributes to include in the index name
  * @param {string} [separator=DefaultSeparator] - The separator to use between parts of the index name
  * @return {string} The generated index name
+ * @memberOf module:for-couchdb
  */
 function generateIndexName(
   name: string[],
@@ -37,7 +38,7 @@ function generateIndexName(
  * @description Generates CouchDB index configurations for models
  * @summary Creates a set of CouchDB index configurations based on the metadata of the provided models
  * @template M - The model type that extends Model
- * @param {Constructor<M>[]} models - Array of model constructors to generate indexes for
+ * @param models - Array of model constructors to generate indexes for
  * @return {CreateIndexRequest[]} Array of CouchDB index configurations
  * @function generateIndexes
  * @memberOf module:for-couchdb
@@ -47,28 +48,28 @@ function generateIndexName(
  *   participant generateIndexes
  *   participant generateIndexName
  *   participant Repository
- *   
+ *
  *   Caller->>generateIndexes: models
- *   
+ *
  *   Note over generateIndexes: Create base table index
  *   generateIndexes->>generateIndexName: [CouchDBKeys.TABLE]
  *   generateIndexName-->>generateIndexes: tableName
  *   generateIndexes->>generateIndexes: Create table index config
- *   
+ *
  *   loop For each model
  *     generateIndexes->>Repository: Get indexes metadata
  *     Repository-->>generateIndexes: index metadata
- *     
+ *
  *     loop For each index in metadata
  *       Note over generateIndexes: Extract index properties
  *       generateIndexes->>Repository: Get table name
  *       Repository-->>generateIndexes: tableName
- *       
+ *
  *       Note over generateIndexes: Define nested generate function
- *       
+ *
  *       generateIndexes->>generateIndexes: Call generate() for default order
  *       Note over generateIndexes: Create index name and config
- *       
+ *
  *       alt Has directions
  *         loop For each direction
  *           generateIndexes->>generateIndexes: Call generate(direction)
@@ -77,7 +78,7 @@ function generateIndexName(
  *       end
  *     end
  *   end
- *   
+ *
  *   generateIndexes-->>Caller: Array of index configurations
  */
 export function generateIndexes<M extends Model>(
