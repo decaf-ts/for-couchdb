@@ -5,23 +5,69 @@ import { Constructor, Model } from "@decaf-ts/decorator-validation";
 import { CouchDBAdapter } from "../adapter";
 import { CouchDBKeys } from "../constants";
 
+/**
+ * @description Paginator for CouchDB query results
+ * @summary Implements pagination for CouchDB queries using bookmarks for efficient navigation through result sets
+ * @template M - The model type that extends Model
+ * @template R - The result type
+ * @param {CouchDBAdapter<any, any, any>} adapter - The CouchDB adapter
+ * @param {MangoQuery} query - The Mango query to paginate
+ * @param {number} size - The page size
+ * @param {Constructor<M>} clazz - The model constructor
+ * @class CouchDBPaginator
+ * @example
+ * // Example of using CouchDBPaginator
+ * const adapter = new MyCouchDBAdapter(scope);
+ * const query = { selector: { type: "user" } };
+ * const paginator = new CouchDBPaginator(adapter, query, 10, User);
+ *
+ * // Get the first page
+ * const page1 = await paginator.page(1);
+ *
+ * // Get the next page
+ * const page2 = await paginator.page(2);
+ */
 export class CouchDBPaginator<M extends Model, R> extends Paginator<
   M,
   R,
   MangoQuery
 > {
+  /**
+   * @description Bookmark for CouchDB pagination
+   * @summary Stores the bookmark returned by CouchDB for continuing pagination
+   */
   private bookMark?: string;
 
+  /**
+   * @description Gets the total number of pages
+   * @summary Not supported in CouchDB - throws an error when accessed
+   * @return {number} Never returns as it throws an error
+   * @throws {InternalError} Always throws as this functionality is not available in CouchDB
+   */
   override get total(): number {
     throw new InternalError(`The total pages api is not available for couchdb`);
   }
 
+  /**
+   * @description Gets the total record count
+   * @summary Not supported in CouchDB - throws an error when accessed
+   * @return {number} Never returns as it throws an error
+   * @throws {InternalError} Always throws as this functionality is not available in CouchDB
+   */
   override get count(): number {
     throw new InternalError(
       `The record count api is not available for couchdb`
     );
   }
 
+  /**
+   * @description Creates a new CouchDBPaginator instance
+   * @summary Initializes a paginator for CouchDB query results
+   * @param {CouchDBAdapter<any, any, any>} adapter - The CouchDB adapter
+   * @param {MangoQuery} query - The Mango query to paginate
+   * @param {number} size - The page size
+   * @param {Constructor<M>} clazz - The model constructor
+   */
   constructor(
     adapter: CouchDBAdapter<any, any, any>,
     query: MangoQuery,
@@ -31,6 +77,12 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
     super(adapter, query, size, clazz);
   }
 
+  /**
+   * @description Prepares a query for pagination
+   * @summary Modifies the raw query to include pagination parameters
+   * @param {MangoQuery} rawStatement - The original Mango query
+   * @return {MangoQuery} The prepared query with pagination parameters
+   */
   protected prepare(rawStatement: MangoQuery): MangoQuery {
     const query: MangoQuery = Object.assign({}, rawStatement);
     if (query.limit) this.limit = query.limit;
@@ -40,6 +92,65 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
     return query;
   }
 
+  /**
+   * @description Retrieves a specific page of results
+   * @summary Executes the query with pagination and processes the results
+   * @param {number} [page=1] - The page number to retrieve
+   * @return {Promise<R[]>} A promise that resolves to an array of results
+   * @throws {PagingError} If trying to access a page other than the first without a bookmark, or if no class is defined
+   * @mermaid
+   * sequenceDiagram
+   *   participant Client
+   *   participant CouchDBPaginator
+   *   participant Adapter
+   *   participant CouchDB
+   *
+   *   Client->>CouchDBPaginator: page(pageNumber)
+   *   Note over CouchDBPaginator: Clone statement
+   *   CouchDBPaginator->>CouchDBPaginator: validatePage(page)
+   *
+   *   alt page !== 1
+   *     CouchDBPaginator->>CouchDBPaginator: Check bookmark
+   *     alt No bookmark
+   *       CouchDBPaginator-->>Client: Throw PagingError
+   *     else Has bookmark
+   *       CouchDBPaginator->>CouchDBPaginator: Add bookmark to statement
+   *     end
+   *   end
+   *
+   *   CouchDBPaginator->>Adapter: raw(statement, false)
+   *   Adapter->>CouchDB: Execute query
+   *   CouchDB-->>Adapter: Return results
+   *   Adapter-->>CouchDBPaginator: Return MangoResponse
+   *
+   *   Note over CouchDBPaginator: Process results
+   *
+   *   alt Has warning
+   *     CouchDBPaginator->>CouchDBPaginator: Log warning
+   *   end
+   *
+   *   CouchDBPaginator->>CouchDBPaginator: Check for clazz
+   *
+   *   alt No clazz
+   *     CouchDBPaginator-->>Client: Throw PagingError
+   *   else Has clazz
+   *     CouchDBPaginator->>CouchDBPaginator: Find primary key
+   *
+   *     alt Has fields in statement
+   *       CouchDBPaginator->>CouchDBPaginator: Use docs directly
+   *     else No fields
+   *       CouchDBPaginator->>CouchDBPaginator: Process each document
+   *       loop For each document
+   *         CouchDBPaginator->>CouchDBPaginator: Extract original ID
+   *         CouchDBPaginator->>Adapter: revert(doc, clazz, pkDef.id, parsedId)
+   *       end
+   *     end
+   *
+   *     CouchDBPaginator->>CouchDBPaginator: Store bookmark
+   *     CouchDBPaginator->>CouchDBPaginator: Update currentPage
+   *     CouchDBPaginator-->>Client: Return results
+   *   end
+   */
   async page(page: number = 1): Promise<R[]> {
     const statement = Object.assign({}, this.statement);
 

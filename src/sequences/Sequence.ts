@@ -13,8 +13,6 @@ import { CouchDBRepository } from "../interfaces";
  *
  * @class CouchDBSequence
  * @implements Sequence
- *
- * @category Sequences
  */
 export class CouchDBSequence extends Sequence {
   protected repo: CouchDBRepository<Seq, any, any, any>;

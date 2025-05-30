@@ -21,15 +21,96 @@ import {
 import { CouchDBPaginator } from "./Paginator";
 import { findPrimaryKey, InternalError } from "@decaf-ts/db-decorators";
 
+/**
+ * @description Statement builder for CouchDB Mango queries
+ * @summary Provides a fluent interface for building CouchDB Mango queries with type safety
+ * @template M - The model type that extends Model
+ * @template R - The result type
+ * @param {CouchDBAdapter<any, any, any>} adapter - The CouchDB adapter
+ * @class CouchDBStatement
+ * @example
+ * // Example of using CouchDBStatement
+ * const adapter = new MyCouchDBAdapter(scope);
+ * const statement = new CouchDBStatement<User, User[]>(adapter);
+ *
+ * // Build a query
+ * const users = await statement
+ *   .from(User)
+ *   .where(Condition.attribute<User>('age').gt(18))
+ *   .orderBy('lastName', 'asc')
+ *   .limit(10)
+ *   .execute();
+ */
 export class CouchDBStatement<M extends Model, R> extends Statement<
   MangoQuery,
   M,
   R
 > {
+  /**
+   * @description Creates a new CouchDBStatement instance
+   * @summary Initializes a statement builder for CouchDB Mango queries
+   * @param {CouchDBAdapter<any, any, any>} adapter - The CouchDB adapter
+   */
   constructor(adapter: CouchDBAdapter<any, any, any>) {
     super(adapter);
   }
 
+  /**
+   * @description Builds a CouchDB Mango query from the statement
+   * @summary Converts the statement's conditions, selectors, and options into a CouchDB Mango query
+   * @return {MangoQuery} The built Mango query
+   * @throws {Error} If there are invalid query conditions
+   * @mermaid
+   * sequenceDiagram
+   *   participant Statement
+   *   participant Repository
+   *   participant parseCondition
+   *
+   *   Statement->>Statement: build()
+   *   Note over Statement: Initialize selectors
+   *   Statement->>Repository: Get table name
+   *   Repository-->>Statement: Return table name
+   *   Statement->>Statement: Create base query
+   *
+   *   alt Has selectSelector
+   *     Statement->>Statement: Add fields to query
+   *   end
+   *
+   *   alt Has whereCondition
+   *     Statement->>Statement: Create combined condition with table
+   *     Statement->>parseCondition: Parse condition
+   *     parseCondition-->>Statement: Return parsed condition
+   *
+   *     alt Is group operator
+   *       alt Is AND operator
+   *         Statement->>Statement: Flatten nested AND conditions
+   *       else Is OR operator
+   *         Statement->>Statement: Combine with table condition
+   *       else
+   *         Statement->>Statement: Throw error
+   *       end
+   *     else
+   *       Statement->>Statement: Merge conditions with existing selector
+   *     end
+   *   end
+   *
+   *   alt Has orderBySelector
+   *     Statement->>Statement: Add sort to query
+   *     Statement->>Statement: Ensure field exists in selector
+   *   end
+   *
+   *   alt Has limitSelector
+   *     Statement->>Statement: Set limit
+   *   else
+   *     Statement->>Statement: Use default limit
+   *   end
+   *
+   *   alt Has offsetSelector
+   *     Statement->>Statement: Set skip
+   *   end
+   *
+   *   Statement-->>Statement: Return query
+   */
   protected build(): MangoQuery {
     const selectors: MangoSelector = {};
     selectors[CouchDBKeys.TABLE] = {};
@@ -129,6 +210,14 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
     return query;
   }
 
+  /**
+   * @description Creates a paginator for the statement
+   * @summary Builds the query and returns a CouchDBPaginator for paginated results
+   * @template R - The result type
+   * @param {number} size - The page size
+   * @return {Promise<Paginator<M, R, MangoQuery>>} A promise that resolves to a paginator
+   * @throws {InternalError} If there's an error building the query
+   */
   async paginate<R>(size: number): Promise<Paginator<M, R, MangoQuery>> {
     try {
       const query: MangoQuery = this.build();
@@ -143,6 +232,14 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
     }
   }
 
+  /**
+   * @description Processes a record from CouchDB
+   * @summary Extracts the ID from a CouchDB document and reverts it to a model instance
+   * @param {any} r - The raw record from CouchDB
+   * @param {keyof M} pkAttr - The primary key attribute of the model
+   * @param {"Number" | "BigInt" | undefined} sequenceType - The type of the sequence
+   * @return {any} The processed record
+   */
   private processRecord(
     r: any,
     pkAttr: keyof M,
@@ -162,6 +259,13 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
     return r;
   }
 
+  /**
+   * @description Executes a raw Mango query
+   * @summary Sends a raw Mango query to CouchDB and processes the results
+   * @template R - The result type
+   * @param {MangoQuery} rawInput - The raw Mango query to execute
+   * @return {Promise<R>} A promise that resolves to the query results
+   */
   override async raw<R>(rawInput: MangoQuery): Promise<R> {
     const results: any[] = await this.adapter.raw(rawInput, true);
 
@@ -174,7 +278,50 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
     return results as R;
   }
 
+  /**
+   * @description Parses a condition into a CouchDB Mango query selector
+   * @summary Converts a Condition object into a CouchDB Mango query selector structure
+   * @param {Condition<M>} condition - The condition to parse
+   * @return {MangoQuery} The Mango query with the parsed condition as its selector
+   * @mermaid
+   * sequenceDiagram
+   *   participant Statement
+   *   participant translateOperators
+   *   participant merge
+   *
+   *   Statement->>Statement: parseCondition(condition)
+   *
+   *   Note over Statement: Extract condition parts
+   *
+   *   alt Simple comparison operator
+   *     Statement->>translateOperators: translateOperators(operator)
+   *     translateOperators-->>Statement: Return CouchDB operator
+   *     Statement->>Statement: Create selector with attribute and operator
+   *   else NOT operator
+   *     Statement->>Statement: parseCondition(attr1)
+   *     Statement->>translateOperators: translateOperators(Operator.NOT)
+   *     translateOperators-->>Statement: Return CouchDB NOT operator
+   *     Statement->>Statement: Create negated selector
+   *   else AND/OR operator
+   *     Statement->>Statement: parseCondition(attr1)
+   *     Statement->>Statement: parseCondition(comparison)
+   *     Statement->>translateOperators: translateOperators(operator)
+   *     translateOperators-->>Statement: Return CouchDB group operator
+   *     Statement->>merge: merge(operator, op1, op2)
+   *     merge-->>Statement: Return merged selector
+   *   end
+   *
+   *   Statement-->>Statement: Return query with selector
+   */
   protected parseCondition(condition: Condition<M>): MangoQuery {
+    /**
+     * @description Merges two selectors with a logical operator
+     * @summary Helper function to combine two selectors with a logical operator
+     * @param {MangoOperator} op - The operator to use for merging
+     * @param {MangoSelector} obj1 - The first selector
+     * @param {MangoSelector} obj2 - The second selector
+     * @return {MangoQuery} The merged query
+     */
     function merge(
       op: MangoOperator,
       obj1: MangoSelector,
