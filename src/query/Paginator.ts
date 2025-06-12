@@ -154,13 +154,16 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
   async page(page: number = 1): Promise<R[]> {
     const statement = Object.assign({}, this.statement);
 
-    // if (!this._recordCount || !this._totalPages) {
-    //   // this._recordCount = await this.adapter
-    //   //   .Query()
-    //   //   .count()
-    //   //   .from(target)
-    //   //   .execute<number>();
-    // }
+   if (!this._recordCount || !this._totalPages) {
+        this._totalPages = this._recordCount = 0;
+        const results: R[] = await this.adapter.raw({ ...statement, limit: undefined }) || [];
+        this._recordCount = results.length;
+        if (this._recordCount > 0) {
+            const size = statement?.limit || this.size;
+            this._totalPages = Math.ceil(this._recordCount / size);
+        }
+    }
+
     this.validatePage(page);
 
     if (page !== 1) {
