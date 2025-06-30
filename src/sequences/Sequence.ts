@@ -22,7 +22,7 @@ export class CouchDBSequence extends Sequence {
     adapter: Adapter<any, MangoQuery, any, any>
   ) {
     super(options);
-    this.repo = Repository.forModel(Seq, adapter.flavour);
+    this.repo = Repository.forModel(Seq, adapter.alias);
   }
 
   /**
