@@ -235,7 +235,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
    * @param {"Number" | "BigInt" | undefined} sequenceType - The type of the sequence
    * @return {any} The processed record
    */
-  private processRecord(
+  protected processRecord(
     r: any,
     pkAttr: keyof M,
     sequenceType: "Number" | "BigInt" | undefined
