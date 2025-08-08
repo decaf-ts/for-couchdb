@@ -1,0 +1,23 @@
+name: "Create CORS enabled Couchdb Image"
+
+on:
+  push:
+    paths:
+      - docker/couchdb.ini
+      - docker/Dockerfile-couchdb
+  workflow_dispatch: # on button click
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        node-version: [22]  # Add your desired versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to docker
+        run: echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u USERNAME --password-stdin
+      - name: Build Couchdb CORS image
+        run: docker build -t ghcr.io/decaf-ts/couchdb:$(cat package.json | jq -r '.version') -t ghcr.io/decaf-ts/couchdb:latest -f ./docker/Dockerfile-couchdb ./docker
+      - name: Publish Couchdb CORS image
+        run: docker push ghcr.io/decaf-ts/couchdb:$(cat package.json | jq -r '.version') && docker push ghcr.io/decaf-ts/couchdb:latest
