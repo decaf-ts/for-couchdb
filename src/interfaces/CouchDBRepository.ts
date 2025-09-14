@@ -17,6 +17,7 @@ import { Context, RepositoryFlags } from "@decaf-ts/db-decorators";
 export type CouchDBRepository<
   M extends Model,
   Y,
+  CONN,
   F extends RepositoryFlags,
   C extends Context<F>,
-> = Repository<M, MangoQuery, CouchDBAdapter<Y, F, C>>;
+> = Repository<M, MangoQuery, CouchDBAdapter<Y, CONN, F, C>>;

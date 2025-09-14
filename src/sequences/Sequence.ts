@@ -15,11 +15,11 @@ import { CouchDBRepository } from "../interfaces";
  * @implements Sequence
  */
 export class CouchDBSequence extends Sequence {
-  protected repo: CouchDBRepository<Seq, any, any, any>;
+  protected repo: CouchDBRepository<Seq, any, any, any, any>;
 
   constructor(
     options: SequenceOptions,
-    adapter: Adapter<any, MangoQuery, any, any>
+    adapter: Adapter<any, any, MangoQuery, any, any>
   ) {
     super(options);
     this.repo = Repository.forModel(Seq, adapter.alias);
