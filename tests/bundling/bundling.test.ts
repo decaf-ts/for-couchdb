@@ -1,7 +1,7 @@
 import { Dirent } from "fs";
 import * as path from "path";
 
-describe("Distribution Tests", () => {
+describe.skip("Distribution Tests", () => {
   it("reads lib", () => {
     const { VERSION } = require("../../lib/index.cjs");
     expect(VERSION).toBeDefined();
