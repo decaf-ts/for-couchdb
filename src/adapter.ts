@@ -70,9 +70,10 @@ import { final } from "@decaf-ts/core";
  */
 export abstract class CouchDBAdapter<
   Y,
+  CONN,
   F extends RepositoryFlags,
   C extends Context<F>,
-> extends Adapter<Y, MangoQuery, F, C> {
+> extends Adapter<Y, CONN, MangoQuery, F, C> {
   protected constructor(scope: Y, flavour: string, alias?: string) {
     super(scope, flavour, alias);
     [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
@@ -108,7 +109,7 @@ export abstract class CouchDBAdapter<
    * @summary Sets up the necessary database indexes for all models managed by this adapter
    * @return {Promise<void>} A promise that resolves when initialization is complete
    */
-  async initialize(): Promise<void> {
+  override async initialize(): Promise<void> {
     const managedModels = Adapter.models(this.flavour);
     return this.index(...managedModels);
   }

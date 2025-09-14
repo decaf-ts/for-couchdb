@@ -63,13 +63,13 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
   /**
    * @description Creates a new CouchDBPaginator instance
    * @summary Initializes a paginator for CouchDB query results
-   * @param {CouchDBAdapter<any, any, any>} adapter - The CouchDB adapter
+   * @param {CouchDBAdapter<any, any, any, any>} adapter - The CouchDB adapter
    * @param {MangoQuery} query - The Mango query to paginate
    * @param {number} size - The page size
    * @param {Constructor<M>} clazz - The model constructor
    */
   constructor(
-    adapter: CouchDBAdapter<any, any, any>,
+    adapter: CouchDBAdapter<any, any, any, any>,
     query: MangoQuery,
     size: number,
     clazz: Constructor<M>
@@ -154,14 +154,15 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
   async page(page: number = 1): Promise<R[]> {
     const statement = Object.assign({}, this.statement);
 
-   if (!this._recordCount || !this._totalPages) {
-        this._totalPages = this._recordCount = 0;
-        const results: R[] = await this.adapter.raw({ ...statement, limit: undefined }) || [];
-        this._recordCount = results.length;
-        if (this._recordCount > 0) {
-            const size = statement?.limit || this.size;
-            this._totalPages = Math.ceil(this._recordCount / size);
-        }
+    if (!this._recordCount || !this._totalPages) {
+      this._totalPages = this._recordCount = 0;
+      const results: R[] =
+        (await this.adapter.raw({ ...statement, limit: undefined })) || [];
+      this._recordCount = results.length;
+      if (this._recordCount > 0) {
+        const size = statement?.limit || this.size;
+        this._totalPages = Math.ceil(this._recordCount / size);
+      }
     }
 
     this.validatePage(page);

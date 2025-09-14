@@ -46,7 +46,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
   M,
   R
 > {
-  constructor(adapter: CouchDBAdapter<any, any, any>) {
+  constructor(adapter: CouchDBAdapter<any, any, any, any>) {
     super(adapter);
   }
 
