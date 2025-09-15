@@ -117,7 +117,9 @@
     "@decaf-ts/db-decorators": "latest",
     "@decaf-ts/decorator-validation": "latest",
     "@decaf-ts/injectable-decorators": "latest",
+    "@decaf-ts/transactional-decorators": "latest",
     "@decaf-ts/reflection": "latest",
+    "@decaf-ts/logging": "latest",
     "reflect-metadata": "^0.2.1"
   }
 }
