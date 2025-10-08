@@ -69,8 +69,8 @@ This module serves as a bridge between your application and CouchDB, abstracting
 
 ### How to Use
 
-- [Initial Setup](./tutorials/For%20Developers.md#_initial-setup_)
-- [Installation](./tutorials/For%20Developers.md#installation)
+- [Initial Setup](./workdocs/tutorials/For%20Developers.md#_initial-setup_)
+- [Installation](./workdocs/tutorials/For%20Developers.md#installation)
 
 ## Creating a CouchDB Adapter
 
