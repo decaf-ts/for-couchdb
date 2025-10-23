@@ -1,3 +1,5 @@
+import { Metadata } from "@decaf-ts/decoration";
+
 export * from "./indexes";
 export * from "./interfaces";
 export * from "./model";
@@ -21,3 +23,12 @@ export * from "./query";
  * @const VERSION
  */
 export const VERSION = "##VERSION##";
+
+/**
+ * @description Stores the current package name
+ * @summary The version string of the for-couchdb package
+ * @const PACKAGE_NAME
+ */
+export const PACKAGE_NAME = "##PACKAGE##";
+
+Metadata.registerLibrary(PACKAGE_NAME, VERSION);
