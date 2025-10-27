@@ -1,4 +1,4 @@
-![Banner](./workdocs/assets/Banner.png)
+![Banner](./workdocs/assets/decaf-logo.svg)
 
 # Decaf CouchDB Module
 
@@ -415,6 +415,24 @@ const indexName = generateIndexName('email', 'users', ['firstName'], 'asc');
 ```
 
 
+## Coding Principles
+
+- group similar functionality in folders (analog to namespaces but without any namespace declaration)
+- one class per file;
+- one interface per file (unless interface is just used as a type);
+- group types as other interfaces in a types.ts file per folder;
+- group constants or enums in a constants.ts file per folder;
+- group decorators in a decorators.ts file per folder;
+- always import from the specific file, never from a folder or index file (exceptions for dependencies on other packages);
+- prefer the usage of established design patters where applicable:
+  - Singleton (can be an anti-pattern. use with care);
+  - factory;
+  - observer;
+  - strategy;
+  - builder;
+  - etc;
+
+
 ### Related
 
 [![decaf-ts](https://github-readme-stats.vercel.app/api/pin/?username=decaf-ts&repo=decaf-ts)](https://github.com/decaf-ts/decaf-ts)
@@ -458,6 +476,6 @@ So if you can, if this project in any way. either by learning something or simpl
 
 ## License
 
-This project is released under the [MIT License](./LICENSE.md).
+This project is released under the [Mozilla Public License 2.0](./LICENSE.md).
 
 By developers, for developers...
