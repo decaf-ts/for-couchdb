@@ -1,9 +1,10 @@
 import { Paginator, PagingError, Sequence } from "@decaf-ts/core";
-import { findPrimaryKey, InternalError } from "@decaf-ts/db-decorators";
+import { DBKeys, InternalError } from "@decaf-ts/db-decorators";
 import { MangoQuery, MangoResponse } from "../types";
-import { Constructor, Model } from "@decaf-ts/decorator-validation";
+import { Model } from "@decaf-ts/decorator-validation";
 import { CouchDBAdapter } from "../adapter";
 import { CouchDBKeys } from "../constants";
+import { Constructor, Metadata } from "@decaf-ts/decoration";
 
 /**
  * @description Paginator for CouchDB query results
@@ -180,7 +181,11 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
     const { docs, bookmark, warning } = rawResult;
     if (warning) console.warn(warning);
     if (!this.clazz) throw new PagingError("No statement target defined");
-    const pkDef = findPrimaryKey(new this.clazz());
+    const id = Model.pk(this.clazz);
+    const type = Metadata.get(
+      this.clazz,
+      Metadata.key(DBKeys.ID, id as string)
+    )?.type;
     const results =
       statement.fields && statement.fields.length
         ? docs // has fields means its not full model
@@ -191,11 +196,8 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
             return this.adapter.revert(
               d,
               this.clazz,
-              pkDef.id,
-              Sequence.parseValue(
-                pkDef.props.type,
-                originalId.join(CouchDBKeys.SEPARATOR)
-              )
+              id,
+              Sequence.parseValue(type, originalId.join(CouchDBKeys.SEPARATOR))
             );
           });
     this.bookMark = bookmark;

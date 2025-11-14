@@ -19,7 +19,8 @@ import {
   CouchDBQueryLimit,
 } from "./constants";
 import { CouchDBPaginator } from "./Paginator";
-import { findPrimaryKey, InternalError } from "@decaf-ts/db-decorators";
+import { DBKeys, InternalError } from "@decaf-ts/db-decorators";
+import { Metadata } from "@decaf-ts/decoration";
 
 /**
  * @description Statement builder for CouchDB Mango queries
@@ -264,9 +265,11 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
   override async raw<R>(rawInput: MangoQuery): Promise<R> {
     const results: any[] = await this.adapter.raw(rawInput, true);
 
-    const pkDef = findPrimaryKey(new this.fromSelector());
-    const pkAttr = pkDef.id;
-    const type = pkDef.props.type;
+    const pkAttr = Model.pk(this.fromSelector);
+    const type = Metadata.get(
+      this.fromSelector,
+      Metadata.key(DBKeys.ID, pkAttr as string)
+    )?.type;
 
     if (!this.selectSelector)
       return results.map((r) => this.processRecord(r, pkAttr, type)) as R;
