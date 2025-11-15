@@ -179,7 +179,7 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
     );
 
     const { docs, bookmark, warning } = rawResult;
-    if (warning) console.warn(warning);
+    if (warning) this.log.for(this.page).warn(warning);
     if (!this.clazz) throw new PagingError("No statement target defined");
     const id = Model.pk(this.clazz);
     const type = Metadata.get(

@@ -108,6 +108,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
    *   Statement-->>Statement: Return query
    */
   protected build(): MangoQuery {
+    const log = this.log.for(this.build);
     const selectors: MangoSelector = {};
     selectors[CouchDBKeys.TABLE] = {};
     selectors[CouchDBKeys.TABLE] = Repository.table(this.fromSelector);
@@ -167,7 +168,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
       else {
         Object.entries(condition).forEach(([key, val]) => {
           if (query.selector[key])
-            console.warn(
+            log.warn(
               `A ${key} query param is about to be overridden: ${query.selector[key]} by ${val}`
             );
           query.selector[key] = val;
@@ -195,7 +196,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
     if (this.limitSelector) {
       query.limit = this.limitSelector;
     } else {
-      console.warn(
+      log.warn(
         `No limit selector defined. Using default couchdb limit of ${CouchDBQueryLimit}`
       );
       query.limit = CouchDBQueryLimit;
