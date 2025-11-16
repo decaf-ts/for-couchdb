@@ -16,7 +16,6 @@ import {
   prefixMethod,
   RepositoryFlags,
 } from "@decaf-ts/db-decorators";
-import "reflect-metadata";
 
 import { CouchDBSequence } from "./sequences/Sequence";
 import { Model } from "@decaf-ts/decorator-validation";
