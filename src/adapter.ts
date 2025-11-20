@@ -16,14 +16,14 @@ import {
   prefixMethod,
   RepositoryFlags,
 } from "@decaf-ts/db-decorators";
-import "reflect-metadata";
 
 import { CouchDBSequence } from "./sequences/Sequence";
-import { Constructor, Model } from "@decaf-ts/decorator-validation";
+import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { MangoQuery } from "./types";
 import { CouchDBStatement } from "./query";
 import { final } from "@decaf-ts/core";
+import { Constructor } from "@decaf-ts/decoration";
 
 /**
  * @description Abstract adapter for CouchDB database operations

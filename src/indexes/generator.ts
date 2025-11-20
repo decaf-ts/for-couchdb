@@ -6,9 +6,10 @@ import {
 } from "@decaf-ts/core";
 import { CouchDBKeys } from "../constants";
 import { DefaultSeparator } from "@decaf-ts/db-decorators";
-import { Constructor, Model } from "@decaf-ts/decorator-validation";
+import { Model } from "@decaf-ts/decorator-validation";
 import { CouchDBOperator } from "../query/constants";
 import { CreateIndexRequest } from "../types";
+import { Constructor } from "@decaf-ts/decoration";
 
 /**
  * @description Generates a name for a CouchDB index
