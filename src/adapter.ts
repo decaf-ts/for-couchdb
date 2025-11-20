@@ -16,7 +16,6 @@ import {
   prefixMethod,
   RepositoryFlags,
 } from "@decaf-ts/db-decorators";
-
 import { CouchDBSequence } from "./sequences/Sequence";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
@@ -187,7 +186,9 @@ export abstract class CouchDBAdapter<
   protected createPrefix(
     tableName: string,
     id: string | number,
-    model: Record<string, any>
+    model: Record<string, any>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...args: any[]
   ) {
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
@@ -225,7 +226,9 @@ export abstract class CouchDBAdapter<
   protected createAllPrefix(
     tableName: string,
     ids: string[] | number[],
-    models: Record<string, any>[]
+    models: Record<string, any>[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...args: any[]
   ) {
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
@@ -260,6 +263,7 @@ export abstract class CouchDBAdapter<
    * @param {string} tableName - The name of the table
    * @param {string|number} id - The ID of the record
    * @param model - The model to prepare
+   * @param [args] - optional args for subclassing
    * @return A tuple containing the tableName, id, and prepared record
    * @throws {InternalError} If no revision number is found in the model
    */
@@ -267,7 +271,9 @@ export abstract class CouchDBAdapter<
   updatePrefix(
     tableName: string,
     id: string | number,
-    model: Record<string, any>
+    model: Record<string, any>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...args: any[]
   ) {
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
@@ -311,7 +317,9 @@ export abstract class CouchDBAdapter<
   protected updateAllPrefix(
     tableName: string,
     ids: string[] | number[],
-    models: Record<string, any>[]
+    models: Record<string, any>[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...args: any[]
   ) {
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
