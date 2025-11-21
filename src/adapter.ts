@@ -132,7 +132,11 @@ export abstract class CouchDBAdapter<
    * @param {boolean} docsOnly - Whether to return only the documents or the full response
    * @return {Promise<R>} A promise that resolves to the query result
    */
-  abstract override raw<R>(rawInput: MangoQuery, docsOnly: boolean): Promise<R>;
+  abstract override raw<R>(
+    rawInput: MangoQuery,
+    docsOnly: boolean,
+    ...args: any[]
+  ): Promise<R>;
 
   /**
    * @description Assigns metadata to a model
