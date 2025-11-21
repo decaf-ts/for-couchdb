@@ -1,6 +1,11 @@
 import { Sequence as Seq } from "../model/CouchDBSequence";
 import { InternalError, NotFoundError } from "@decaf-ts/db-decorators";
-import { Adapter, Repository, SequenceOptions } from "@decaf-ts/core";
+import {
+  Adapter,
+  Repository,
+  SequenceOptions,
+  UnsupportedError,
+} from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
 import { MangoQuery } from "../types";
 import { CouchDBRepository } from "../interfaces";
@@ -83,12 +88,19 @@ export class CouchDBSequence extends Sequence {
       throw new InternalError(
         `Value to increment does not consider the incrementBy setting: ${incrementBy}`
       );
-    switch (type) {
-      case "Number":
+    const typename =
+      typeof type === "function" && (type as any)?.name
+        ? (type as any).name
+        : type;
+    switch (typename) {
+      case Number.name:
         next = (this.parse(current) as number) + toIncrementBy;
         break;
-      case "BigInt":
+      case BigInt.name:
         next = (this.parse(current) as bigint) + BigInt(toIncrementBy);
+        break;
+      case String.name:
+        next = this.parse(current);
         break;
       default:
         throw new InternalError("Should never happen");
@@ -126,7 +138,18 @@ export class CouchDBSequence extends Sequence {
     for (let i: number = 1; i <= count; i++) {
       range.push(current + incrementBy * (this.parse(i) as number));
     }
-    if (range[range.length - 1] !== next)
+
+    if (this.options.type === "uuid" || this.options.type === "serial")
+      throw new UnsupportedError(
+        `type ${this.options.type} is currently not suppported for this adapter`
+      );
+    const typename =
+      typeof this.options.type === "function" &&
+      (this.options.type as any)?.name
+        ? (this.options.type as any).name
+        : this.options.type;
+
+    if (range[range.length - 1] !== next && typename !== "String")
       throw new InternalError("Miscalculation of range");
     return range;
   }
