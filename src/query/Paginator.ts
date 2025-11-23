@@ -70,7 +70,7 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
    * @param {Constructor<M>} clazz - The model constructor
    */
   constructor(
-    adapter: CouchDBAdapter<any, any, any, any>,
+    adapter: CouchDBAdapter<any, any, any>,
     query: MangoQuery,
     size: number,
     clazz: Constructor<M>
@@ -153,12 +153,17 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
    *   end
    */
   async page(page: number = 1): Promise<R[]> {
+    const { ctx } = this.adapter["logCtx"]([page], this.page);
     const statement = Object.assign({}, this.statement);
 
     if (!this._recordCount || !this._totalPages) {
       this._totalPages = this._recordCount = 0;
       const results: R[] =
-        (await this.adapter.raw({ ...statement, limit: undefined })) || [];
+        (await this.adapter.raw(
+          { ...statement, limit: undefined },
+          true,
+          ctx
+        )) || [];
       this._recordCount = results.length;
       if (this._recordCount > 0) {
         const size = statement?.limit || this.size;
@@ -175,7 +180,8 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
     }
     const rawResult: MangoResponse<any> = await this.adapter.raw(
       statement,
-      false
+      false,
+      ctx
     );
 
     const { docs, bookmark, warning } = rawResult;
@@ -196,8 +202,9 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
             return this.adapter.revert(
               d,
               this.clazz,
-              id,
-              Sequence.parseValue(type, originalId.join(CouchDBKeys.SEPARATOR))
+              Sequence.parseValue(type, originalId.join(CouchDBKeys.SEPARATOR)),
+              undefined,
+              ctx
             );
           });
     this.bookMark = bookmark;

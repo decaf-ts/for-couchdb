@@ -10,7 +10,6 @@ import {
 } from "@decaf-ts/core";
 import { MangoOperator, MangoQuery, MangoSelector } from "../types";
 import { Model } from "@decaf-ts/decorator-validation";
-import { CouchDBAdapter } from "../adapter";
 import { translateOperators } from "./translate";
 import { CouchDBKeys } from "../constants";
 import {
@@ -19,8 +18,9 @@ import {
   CouchDBQueryLimit,
 } from "./constants";
 import { CouchDBPaginator } from "./Paginator";
-import { DBKeys, InternalError } from "@decaf-ts/db-decorators";
+import { Context, DBKeys, InternalError } from "@decaf-ts/db-decorators";
 import { Metadata } from "@decaf-ts/decoration";
+import { Adapter } from "@decaf-ts/core";
 
 /**
  * @description Statement builder for CouchDB Mango queries
@@ -42,12 +42,12 @@ import { Metadata } from "@decaf-ts/decoration";
  *   .limit(10)
  *   .execute();
  */
-export class CouchDBStatement<M extends Model, R> extends Statement<
-  MangoQuery,
-  M,
-  R
-> {
-  constructor(adapter: CouchDBAdapter<any, any, any, any>) {
+export class CouchDBStatement<
+  M extends Model,
+  A extends Adapter<any, any, MangoQuery, any>,
+  R,
+> extends Statement<M, A, R> {
+  constructor(adapter: A) {
     super(adapter);
   }
 
@@ -240,7 +240,8 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
   protected processRecord(
     r: any,
     pkAttr: keyof M,
-    sequenceType: "Number" | "BigInt" | undefined
+    sequenceType: "Number" | "BigInt" | undefined,
+    ctx: Context
   ) {
     if (r[CouchDBKeys.ID]) {
       const [, ...keyArgs] = r[CouchDBKeys.ID].split(CouchDBKeys.SEPARATOR);
@@ -249,8 +250,9 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
       return this.adapter.revert(
         r,
         this.fromSelector,
-        pkAttr,
-        Sequence.parseValue(sequenceType, id)
+        Sequence.parseValue(sequenceType, id),
+        undefined,
+        ctx
       );
     }
     return r;
@@ -263,8 +265,10 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
    * @param {MangoQuery} rawInput - The raw Mango query to execute
    * @return {Promise<R>} A promise that resolves to the query results
    */
-  override async raw<R>(rawInput: MangoQuery): Promise<R> {
-    const results: any[] = await this.adapter.raw(rawInput, true);
+  override async raw<R>(rawInput: MangoQuery, ...args: any[]): Promise<R> {
+    const { ctx } = Adapter.logCtx(args, this.raw);
+
+    const results: any[] = await this.adapter.raw(rawInput, true, ctx);
 
     const pkAttr = Model.pk(this.fromSelector);
     const type = Metadata.get(
@@ -273,7 +277,7 @@ export class CouchDBStatement<M extends Model, R> extends Statement<
     )?.type;
 
     if (!this.selectSelector)
-      return results.map((r) => this.processRecord(r, pkAttr, type)) as R;
+      return results.map((r) => this.processRecord(r, pkAttr, type, ctx)) as R;
     return results as R;
   }
 

@@ -14,12 +14,12 @@ import {
   InternalError,
   NotFoundError,
   prefixMethod,
-  RepositoryFlags,
+  PrimaryKeyType,
 } from "@decaf-ts/db-decorators";
 import { CouchDBSequence } from "./sequences/Sequence";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
-import { MangoQuery } from "./types";
+import { type MangoQuery } from "./types";
 import { CouchDBStatement } from "./query";
 import { final } from "@decaf-ts/core";
 import { Constructor } from "@decaf-ts/decoration";
@@ -68,12 +68,11 @@ import { Constructor } from "@decaf-ts/decoration";
  * }
  */
 export abstract class CouchDBAdapter<
-  Y,
+  CONF,
   CONN,
-  F extends RepositoryFlags,
-  C extends Context<F>,
-> extends Adapter<Y, CONN, MangoQuery, F, C> {
-  protected constructor(scope: Y, flavour: string, alias?: string) {
+  C extends Context<any>,
+> extends Adapter<CONF, CONN, MangoQuery, C> {
+  protected constructor(scope: CONF, flavour: string, alias?: string) {
     super(scope, flavour, alias);
     [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
       const name = m.name;
@@ -88,7 +87,11 @@ export abstract class CouchDBAdapter<
    * @return {CouchDBStatement<M, any>} A new CouchDBStatement instance
    */
   @final()
-  Statement<M extends Model>(): CouchDBStatement<M, any> {
+  Statement<M extends Model>(): CouchDBStatement<
+    M,
+    Adapter<CONF, CONN, MangoQuery, C>,
+    any
+  > {
     return new CouchDBStatement(this);
   }
 
@@ -135,7 +138,7 @@ export abstract class CouchDBAdapter<
   abstract override raw<R>(
     rawInput: MangoQuery,
     docsOnly: boolean,
-    ...args: any[]
+    ...args: [...any[], C]
   ): Promise<R>;
 
   /**
@@ -187,18 +190,19 @@ export abstract class CouchDBAdapter<
    * @return A tuple containing the tableName, id, and prepared record
    */
   @final()
-  protected createPrefix(
-    tableName: string,
-    id: string | number,
+  protected createPrefix<M extends Model>(
+    clazz: Constructor<M>,
+    id: PrimaryKeyType,
     model: Record<string, any>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ...args: any[]
-  ) {
+  ): [Constructor<M>, PrimaryKeyType, Record<string, any>, ...any[], Context] {
+    const { ctx } = this.logCtx(args, this.createPrefix);
+    const tableName = Repository.table(clazz);
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
-    record[CouchDBKeys.ID] = this.generateId(tableName, id);
+    record[CouchDBKeys.ID] = this.generateId(tableName, id as any);
     Object.assign(record, model);
-    return [tableName, id, record];
+    return [clazz, id, record, ...args, ctx];
   }
 
   /**
@@ -210,9 +214,9 @@ export abstract class CouchDBAdapter<
    * @param {...any[]} args - Additional arguments
    * @return {Promise<Record<string, any>>} A promise that resolves to the created record
    */
-  abstract override create(
-    tableName: string,
-    id: string | number,
+  abstract override create<M extends Model>(
+    tableName: Constructor<M>,
+    id: PrimaryKeyType,
     model: Record<string, any>,
     ...args: any[]
   ): Promise<Record<string, any>>;
@@ -255,9 +259,9 @@ export abstract class CouchDBAdapter<
    * @param {...any[]} args - Additional arguments
    * @return {Promise<Record<string, any>>} A promise that resolves to the read record
    */
-  abstract override read(
-    tableName: string,
-    id: string | number,
+  abstract override read<M extends Model>(
+    tableName: Constructor<M>,
+    id: PrimaryKeyType,
     ...args: any[]
   ): Promise<Record<string, any>>;
 
@@ -301,9 +305,9 @@ export abstract class CouchDBAdapter<
    * @param {any[]} args - Additional arguments
    * @return A promise that resolves to the updated record
    */
-  abstract override update(
-    tableName: string,
-    id: string | number,
+  abstract override update<M extends Model>(
+    tableName: Constructor<M>,
+    id: PrimaryKeyType,
     model: Record<string, any>,
     ...args: any[]
   ): Promise<Record<string, any>>;
@@ -347,14 +351,14 @@ export abstract class CouchDBAdapter<
   /**
    * @description Deletes a record from the database
    * @summary Abstract method that must be implemented to delete a record
-   * @param {string} tableName - The name of the table
-   * @param {string|number} id - The ID of the record
+   * @param {Constructor<M>} tableName - The name of the table
+   * @param {PrimaryKeyType} id - The ID of the record
    * @param {any[]} args - Additional arguments
    * @return A promise that resolves to the deleted record
    */
-  abstract override delete(
-    tableName: string,
-    id: string | number,
+  abstract override delete<M extends Model>(
+    tableName: Constructor<M>,
+    id: PrimaryKeyType,
     ...args: any[]
   ): Promise<Record<string, any>>;
 
@@ -365,7 +369,7 @@ export abstract class CouchDBAdapter<
    * @param {string|number} id - The ID of the record
    * @return {string} The generated CouchDB document ID
    */
-  protected generateId(tableName: string, id: string | number) {
+  protected generateId(tableName: string, id: PrimaryKeyType) {
     return [tableName, id].join(CouchDBKeys.SEPARATOR);
   }
 
@@ -376,7 +380,7 @@ export abstract class CouchDBAdapter<
    * @param {string} [reason] - Optional reason for the error
    * @return {BaseError} The parsed error as a BaseError
    */
-  parseError(err: Error | string, reason?: string): BaseError {
+  parseError<E extends BaseError>(err: Error | string, reason?: string): E {
     return CouchDBAdapter.parseError(err, reason);
   }
 
@@ -446,14 +450,17 @@ export abstract class CouchDBAdapter<
    *     ErrorTypes-->>Caller: InternalError
    *   end
    */
-  protected static parseError(err: Error | string, reason?: string): BaseError {
+  protected static parseError<E extends BaseError>(
+    err: Error | string,
+    reason?: string
+  ): E {
     if (err instanceof BaseError) return err as any;
     let code: string = "";
     if (typeof err === "string") {
       code = err;
       if (code.match(/already exist|update conflict/g))
-        return new ConflictError(code);
-      if (code.match(/missing|deleted/g)) return new NotFoundError(code);
+        return new ConflictError(code) as E;
+      if (code.match(/missing|deleted/g)) return new NotFoundError(code) as E;
     } else if ((err as any).code) {
       code = (err as any).code;
       reason = reason || err.message;
@@ -468,17 +475,17 @@ export abstract class CouchDBAdapter<
       case "401":
       case "412":
       case "409":
-        return new ConflictError(reason as string);
+        return new ConflictError(reason as string) as E;
       case "404":
-        return new NotFoundError(reason as string);
+        return new NotFoundError(reason as string) as E;
       case "400":
         if (code.toString().match(/No\sindex\sexists/g))
-          return new IndexError(err);
-        return new InternalError(err);
+          return new IndexError(err) as E;
+        return new InternalError(err) as E;
       default:
         if (code.toString().match(/ECONNREFUSED/g))
-          return new ConnectionError(err);
-        return new InternalError(err);
+          return new ConnectionError(err) as E;
+        return new InternalError(err) as E;
     }
   }
 }
