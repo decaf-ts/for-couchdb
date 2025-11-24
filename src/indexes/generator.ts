@@ -1,9 +1,4 @@
-import {
-  IndexMetadata,
-  OrderDirection,
-  PersistenceKeys,
-  Repository,
-} from "@decaf-ts/core";
+import { IndexMetadata, OrderDirection, PersistenceKeys } from "@decaf-ts/core";
 import { CouchDBKeys } from "../constants";
 import { DefaultSeparator } from "@decaf-ts/db-decorators";
 import { Model } from "@decaf-ts/decorator-validation";
@@ -97,12 +92,12 @@ export function generateIndexes<M extends Model>(
   };
 
   models.forEach((m) => {
-    const ind: Record<string, IndexMetadata> = Repository.indexes(m);
+    const ind: Record<string, IndexMetadata> = Model.indexes(m);
     Object.entries(ind).forEach(([key, value]) => {
       const k = Object.keys(value)[0];
       // eslint-disable-next-line prefer-const
       let { directions, compositions } = (value as any)[k];
-      const tableName = Repository.table(m);
+      const tableName = Model.tableName(m);
       compositions = compositions || [];
 
       function generate(sort?: OrderDirection) {

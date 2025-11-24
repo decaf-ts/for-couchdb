@@ -10,19 +10,19 @@ import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
   ConflictError,
-  Context,
   InternalError,
   NotFoundError,
   prefixMethod,
-  PrimaryKeyType,
 } from "@decaf-ts/db-decorators";
+import type { Context, PrimaryKeyType } from "@decaf-ts/db-decorators";
 import { CouchDBSequence } from "./sequences/Sequence";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { type MangoQuery } from "./types";
 import { CouchDBStatement } from "./query";
-import { final } from "@decaf-ts/core";
-import { Constructor } from "@decaf-ts/decoration";
+import { MaybeContextualArg } from "@decaf-ts/core";
+import type { Constructor } from "@decaf-ts/decoration";
+import { final } from "@decaf-ts/logging";
 
 /**
  * @description Abstract adapter for CouchDB database operations
@@ -138,7 +138,7 @@ export abstract class CouchDBAdapter<
   abstract override raw<R>(
     rawInput: MangoQuery,
     docsOnly: boolean,
-    ...args: [...any[], C]
+    ...args: MaybeContextualArg<C>
   ): Promise<R>;
 
   /**
@@ -194,15 +194,15 @@ export abstract class CouchDBAdapter<
     clazz: Constructor<M>,
     id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ): [Constructor<M>, PrimaryKeyType, Record<string, any>, ...any[], Context] {
-    const { ctx } = this.logCtx(args, this.createPrefix);
-    const tableName = Repository.table(clazz);
+    const { ctxArgs } = this.logCtx(args, this.createPrefix);
+    const tableName = Model.tableName(clazz);
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
     record[CouchDBKeys.ID] = this.generateId(tableName, id as any);
     Object.assign(record, model);
-    return [clazz, id, record, ...args, ctx];
+    return [clazz, id, record, ...ctxArgs];
   }
 
   /**
@@ -218,7 +218,7 @@ export abstract class CouchDBAdapter<
     tableName: Constructor<M>,
     id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -235,12 +235,11 @@ export abstract class CouchDBAdapter<
     tableName: string,
     ids: string[] | number[],
     models: Record<string, any>[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ) {
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
-
+    const { ctxArgs } = this.logCtx(args, this.createAllPrefix);
     const records = ids.map((id, count) => {
       const record: Record<string, any> = {};
       record[CouchDBKeys.TABLE] = tableName;
@@ -248,7 +247,7 @@ export abstract class CouchDBAdapter<
       Object.assign(record, models[count]);
       return record;
     });
-    return [tableName, ids, records];
+    return [tableName, ids, records, ...ctxArgs];
   }
 
   /**
@@ -262,7 +261,7 @@ export abstract class CouchDBAdapter<
   abstract override read<M extends Model>(
     tableName: Constructor<M>,
     id: PrimaryKeyType,
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -280,9 +279,10 @@ export abstract class CouchDBAdapter<
     tableName: string,
     id: string | number,
     model: Record<string, any>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    ...args: any[]
+
+    ...args: MaybeContextualArg<C>
   ) {
+    const { ctxArgs } = this.logCtx(args, this.updatePrefix);
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
     record[CouchDBKeys.ID] = this.generateId(tableName, id);
@@ -293,7 +293,7 @@ export abstract class CouchDBAdapter<
       );
     Object.assign(record, model);
     record[CouchDBKeys.REV] = rev;
-    return [tableName, id, record];
+    return [tableName, id, record, ...ctxArgs];
   }
 
   /**
@@ -309,7 +309,7 @@ export abstract class CouchDBAdapter<
     tableName: Constructor<M>,
     id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -326,12 +326,11 @@ export abstract class CouchDBAdapter<
     tableName: string,
     ids: string[] | number[],
     models: Record<string, any>[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ) {
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
-
+    const { ctxArgs } = this.logCtx(args, this.updateAllPrefix);
     const records = ids.map((id, count) => {
       const record: Record<string, any> = {};
       record[CouchDBKeys.TABLE] = tableName;
@@ -345,7 +344,7 @@ export abstract class CouchDBAdapter<
       record[CouchDBKeys.REV] = rev;
       return record;
     });
-    return [tableName, ids, records];
+    return [tableName, ids, records, ...ctxArgs];
   }
 
   /**
@@ -359,7 +358,7 @@ export abstract class CouchDBAdapter<
   abstract override delete<M extends Model>(
     tableName: Constructor<M>,
     id: PrimaryKeyType,
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ): Promise<Record<string, any>>;
 
   /**

@@ -4,7 +4,6 @@ import {
   Operator,
   OrderDirection,
   Paginator,
-  Repository,
   Sequence,
   Statement,
 } from "@decaf-ts/core";
@@ -18,7 +17,8 @@ import {
   CouchDBQueryLimit,
 } from "./constants";
 import { CouchDBPaginator } from "./Paginator";
-import { Context, DBKeys, InternalError } from "@decaf-ts/db-decorators";
+import { DBKeys, InternalError } from "@decaf-ts/db-decorators";
+import type { Context } from "@decaf-ts/db-decorators";
 import { Metadata } from "@decaf-ts/decoration";
 import { Adapter } from "@decaf-ts/core";
 
@@ -46,7 +46,7 @@ export class CouchDBStatement<
   M extends Model,
   A extends Adapter<any, any, MangoQuery, any>,
   R,
-> extends Statement<M, A, R> {
+> extends Statement<M, A, R, MangoQuery> {
   constructor(adapter: A) {
     super(adapter);
   }
@@ -111,7 +111,7 @@ export class CouchDBStatement<
     const log = this.log.for(this.build);
     const selectors: MangoSelector = {};
     selectors[CouchDBKeys.TABLE] = {};
-    selectors[CouchDBKeys.TABLE] = Repository.table(this.fromSelector);
+    selectors[CouchDBKeys.TABLE] = Model.tableName(this.fromSelector);
     const query: MangoQuery = { selector: selectors };
     if (this.selectSelector) query.fields = this.selectSelector as string[];
 
