@@ -3,8 +3,7 @@ import { InternalError, NotFoundError } from "@decaf-ts/db-decorators";
 import { Adapter, Repository, SequenceOptions } from "@decaf-ts/core";
 import { Sequence } from "@decaf-ts/core";
 import { MangoQuery } from "../types";
-import { CouchDBRepository } from "../interfaces";
-
+import { CouchDBRepository } from "../repository";
 /**
  * @summary Abstract implementation of a Sequence
  * @description provides the basic functionality for {@link Sequence}s
@@ -15,7 +14,7 @@ import { CouchDBRepository } from "../interfaces";
  * @implements Sequence
  */
 export class CouchDBSequence extends Sequence {
-  protected repo: CouchDBRepository<Seq, any, any, any>;
+  protected repo: CouchDBRepository<Seq, any>;
 
   constructor(
     options: SequenceOptions,

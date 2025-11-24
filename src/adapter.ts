@@ -4,7 +4,6 @@ import {
   type SequenceOptions,
   PersistenceKeys,
   ConnectionError,
-  Repository,
 } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
@@ -23,6 +22,8 @@ import { CouchDBStatement } from "./query";
 import { MaybeContextualArg } from "@decaf-ts/core";
 import type { Constructor } from "@decaf-ts/decoration";
 import { final } from "@decaf-ts/logging";
+import { CouchDBRepository } from "./repository";
+import { Repository } from "@decaf-ts/core";
 
 /**
  * @description Abstract adapter for CouchDB database operations
@@ -116,6 +117,12 @@ export abstract class CouchDBAdapter<
     return this.index(...managedModels);
   }
 
+  override repository<
+    R extends Repository<any, Adapter<CONF, CONN, MangoQuery, C>>,
+  >(): Constructor<R> {
+    return CouchDBRepository as unknown as Constructor<R>;
+  }
+
   /**
    * @description Creates indexes for the given models
    * @summary Abstract method that must be implemented to create database indexes for the specified models
@@ -159,6 +166,7 @@ export abstract class CouchDBAdapter<
       writable: false,
       value: rev,
     });
+    CouchDBAdapter.setMetadata(model as any, rev);
     return model;
   }
 
@@ -175,7 +183,7 @@ export abstract class CouchDBAdapter<
     revs: string[]
   ): Record<string, any>[] {
     models.forEach((m, i) => {
-      Repository.setMetadata(m as any, revs[i]);
+      CouchDBAdapter.setMetadata(m as any, revs[i]);
       return m;
     });
     return models;
@@ -486,5 +494,51 @@ export abstract class CouchDBAdapter<
           return new ConnectionError(err) as E;
         return new InternalError(err) as E;
     }
+  }
+
+  // TODO why do we need this?
+  /**
+   * @description Sets metadata on a model instance.
+   * @summary Attaches metadata to a model instance using a non-enumerable property.
+   * @template M - The model type that extends Model.
+   * @param {M} model - The model instance.
+   * @param {any} metadata - The metadata to attach to the model.
+   */
+  static setMetadata<M extends Model>(model: M, metadata: any) {
+    Object.defineProperty(model, PersistenceKeys.METADATA, {
+      enumerable: false,
+      configurable: true,
+      writable: false,
+      value: metadata,
+    });
+  }
+
+  /**
+   * @description Gets metadata from a model instance.
+   * @summary Retrieves previously attached metadata from a model instance.
+   * @template M - The model type that extends Model.
+   * @param {M} model - The model instance.
+   * @return {any} The metadata or undefined if not found.
+   */
+  static getMetadata<M extends Model>(model: M) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      model,
+      PersistenceKeys.METADATA
+    );
+    return descriptor ? descriptor.value : undefined;
+  }
+
+  /**
+   * @description Removes metadata from a model instance.
+   * @summary Deletes the metadata property from a model instance.
+   * @template M - The model type that extends Model.
+   * @param {M} model - The model instance.
+   */
+  static removeMetadata<M extends Model>(model: M) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      model,
+      PersistenceKeys.METADATA
+    );
+    if (descriptor) delete (model as any)[PersistenceKeys.METADATA];
   }
 }
