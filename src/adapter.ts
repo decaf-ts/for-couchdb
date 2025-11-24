@@ -129,15 +129,15 @@ export abstract class CouchDBAdapter<
 
   /**
    * @description Executes a raw Mango query against the database
-   * @summary Abstract method that must be implemented to execute raw Mango queries
+   * @summary Abstract method that must be implemented to execute raw Mango queries. Implementations may treat the first
+   * additional argument as a boolean `docsOnly` flag before the contextual arguments provided by repositories.
    * @template R - The result type
    * @param {MangoQuery} rawInput - The raw Mango query to execute
-   * @param {boolean} docsOnly - Whether to return only the documents or the full response
+   * @param {...MaybeContextualArg<C>} args - Optional `docsOnly` flag followed by contextual arguments
    * @return {Promise<R>} A promise that resolves to the query result
    */
   abstract override raw<R>(
     rawInput: MangoQuery,
-    docsOnly: boolean,
     ...args: MaybeContextualArg<C>
   ): Promise<R>;
 
