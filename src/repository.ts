@@ -22,16 +22,11 @@ export class CouchDBRepository<
 
   protected assignMetadata(model: M, source?: M): M;
   protected assignMetadata(models: M[], source?: M[]): M[];
-  protected assignMetadata(
-    target: M | M[],
-    source?: M | M[]
-  ): M | M[] {
+  protected assignMetadata(target: M | M[], source?: M | M[]): M | M[] {
     const apply = (instance: M, carrier?: M) => {
       const metadataSource = carrier ?? instance;
       const metadata = CouchDBAdapter.getMetadata(metadataSource);
-      if (metadata && !CouchDBAdapter.getMetadata(instance)) {
-        CouchDBAdapter.setMetadata(instance, metadata);
-      }
+      if (metadata) CouchDBAdapter.setMetadata(instance, metadata);
       return instance;
     };
 
@@ -168,10 +163,8 @@ export class CouchDBRepository<
       );
       if (errors) throw new ValidationError(errors.toString());
     }
-    if (CouchDBAdapter.getMetadata(oldModel)) {
-      if (!CouchDBAdapter.getMetadata(model))
-        CouchDBAdapter.setMetadata(model, CouchDBAdapter.getMetadata(oldModel));
-    }
+    const oldMetadata = CouchDBAdapter.getMetadata(oldModel);
+    if (oldMetadata) CouchDBAdapter.setMetadata(model, oldMetadata);
     return [model, ...contextArgs.args];
   }
 
@@ -206,13 +199,8 @@ export class CouchDBRepository<
     const oldModels = await this.readAll(ids, ...contextArgs.args);
     models = models.map((m, i) => {
       m = Model.merge(oldModels[i], m, this.class);
-      if (CouchDBAdapter.getMetadata(oldModels[i])) {
-        if (!CouchDBAdapter.getMetadata(m))
-          CouchDBAdapter.setMetadata(
-            m,
-            CouchDBAdapter.getMetadata(oldModels[i])
-          );
-      }
+      const oldMetadata = CouchDBAdapter.getMetadata(oldModels[i]);
+      if (oldMetadata) CouchDBAdapter.setMetadata(m, oldMetadata);
       return m;
     });
     if (shouldRunHandlers)
@@ -252,13 +240,8 @@ export class CouchDBRepository<
     }
 
     models.forEach((m, i) => {
-      if (CouchDBAdapter.getMetadata(oldModels[i])) {
-        if (!CouchDBAdapter.getMetadata(m))
-          CouchDBAdapter.setMetadata(
-            m,
-            CouchDBAdapter.getMetadata(oldModels[i])
-          );
-      }
+      const oldMetadata = CouchDBAdapter.getMetadata(oldModels[i]);
+      if (oldMetadata) CouchDBAdapter.setMetadata(m, oldMetadata);
     });
     return [models, ...contextArgs.args];
   }

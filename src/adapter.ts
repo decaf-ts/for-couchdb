@@ -235,12 +235,13 @@ export abstract class CouchDBAdapter<
    * @throws {InternalError} If ids and models arrays have different lengths
    */
   @final()
-  protected createAllPrefix(
-    tableName: string,
+  protected createAllPrefix<M extends Model>(
+    clazz: Constructor<M>,
     ids: string[] | number[],
     models: Record<string, any>[],
     ...args: MaybeContextualArg<C>
   ) {
+    const tableName = Model.tableName(clazz);
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
     const { ctxArgs } = this.logCtx(args, this.createAllPrefix);
@@ -279,13 +280,14 @@ export abstract class CouchDBAdapter<
    * @throws {InternalError} If no revision number is found in the model
    */
   @final()
-  updatePrefix(
-    tableName: string,
-    id: string | number,
+  updatePrefix<M extends Model>(
+    clazz: Constructor<M>,
+    id: PrimaryKeyType,
     model: Record<string, any>,
 
     ...args: MaybeContextualArg<C>
   ) {
+    const tableName = Model.tableName(clazz);
     const { ctxArgs } = this.logCtx(args, this.updatePrefix);
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
@@ -326,12 +328,13 @@ export abstract class CouchDBAdapter<
    * @throws {InternalError} If ids and models arrays have different lengths or if no revision number is found in a model
    */
   @final()
-  protected updateAllPrefix(
-    tableName: string,
-    ids: string[] | number[],
+  protected updateAllPrefix<M extends Model>(
+    clazz: Constructor<M>,
+    ids: PrimaryKeyType[],
     models: Record<string, any>[],
     ...args: MaybeContextualArg<C>
   ) {
+    const tableName = Model.tableName(clazz);
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
     const { ctxArgs } = this.logCtx(args, this.updateAllPrefix);
