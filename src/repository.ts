@@ -10,6 +10,7 @@ import {
   OperationKeys,
   ValidationError,
 } from "@decaf-ts/db-decorators";
+import type { PrimaryKeyType } from "@decaf-ts/db-decorators";
 
 export class CouchDBRepository<
   M extends Model,
@@ -17,6 +18,104 @@ export class CouchDBRepository<
 > extends Repository<M, A> {
   constructor(adapter: A, model: Constructor<M>) {
     super(adapter, model);
+  }
+
+  protected assignMetadata(model: M, source?: M): M;
+  protected assignMetadata(models: M[], source?: M[]): M[];
+  protected assignMetadata(
+    target: M | M[],
+    source?: M | M[]
+  ): M | M[] {
+    const apply = (instance: M, carrier?: M) => {
+      const metadataSource = carrier ?? instance;
+      const metadata = CouchDBAdapter.getMetadata(metadataSource);
+      if (metadata && !CouchDBAdapter.getMetadata(instance)) {
+        CouchDBAdapter.setMetadata(instance, metadata);
+      }
+      return instance;
+    };
+
+    if (Array.isArray(target)) {
+      return target.map((model, index) => {
+        const carrier = Array.isArray(source) ? source[index] : source;
+        return apply(model, carrier);
+      });
+    }
+
+    const carrier = Array.isArray(source) ? source?.[0] : source;
+    return apply(target, carrier);
+  }
+
+  override async create(
+    model: M,
+    ...args: MaybeContextualArg<ContextOf<A>>
+  ): Promise<M> {
+    const result = await super.create(model, ...args);
+    this.assignMetadata(result);
+    this.assignMetadata(model, result);
+    return result;
+  }
+
+  override async createAll(
+    models: M[],
+    ...args: MaybeContextualArg<ContextOf<A>>
+  ): Promise<M[]> {
+    const results = await super.createAll(models, ...args);
+    this.assignMetadata(results);
+    this.assignMetadata(models, results);
+    return results;
+  }
+
+  override async read(
+    id: PrimaryKeyType,
+    ...args: MaybeContextualArg<ContextOf<A>>
+  ): Promise<M> {
+    const result = await super.read(id, ...args);
+    return this.assignMetadata(result) as M;
+  }
+
+  override async readAll(
+    ids: PrimaryKeyType[],
+    ...args: MaybeContextualArg<ContextOf<A>>
+  ): Promise<M[]> {
+    const results = await super.readAll(ids, ...args);
+    return this.assignMetadata(results) as M[];
+  }
+
+  override async update(
+    model: M,
+    ...args: MaybeContextualArg<ContextOf<A>>
+  ): Promise<M> {
+    const result = await super.update(model, ...args);
+    this.assignMetadata(result);
+    this.assignMetadata(model, result);
+    return result;
+  }
+
+  override async updateAll(
+    models: M[],
+    ...args: MaybeContextualArg<ContextOf<A>>
+  ): Promise<M[]> {
+    const results = await super.updateAll(models, ...args);
+    this.assignMetadata(results);
+    this.assignMetadata(models, results);
+    return results;
+  }
+
+  override async delete(
+    id: PrimaryKeyType,
+    ...args: MaybeContextualArg<ContextOf<A>>
+  ): Promise<M> {
+    const result = await super.delete(id, ...args);
+    return this.assignMetadata(result) as M;
+  }
+
+  override async deleteAll(
+    ids: PrimaryKeyType[],
+    ...args: MaybeContextualArg<ContextOf<A>>
+  ): Promise<M[]> {
+    const results = await super.deleteAll(ids, ...args);
+    return this.assignMetadata(results) as M[];
   }
 
   /**

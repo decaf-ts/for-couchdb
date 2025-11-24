@@ -73,6 +73,7 @@ export abstract class CouchDBAdapter<
   CONN,
   C extends Context<any>,
 > extends Adapter<CONF, CONN, MangoQuery, C> {
+
   protected constructor(scope: CONF, flavour: string, alias?: string) {
     super(scope, flavour, alias);
     [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
@@ -160,12 +161,7 @@ export abstract class CouchDBAdapter<
     model: Record<string, any>,
     rev: string
   ): Record<string, any> {
-    Object.defineProperty(model, PersistenceKeys.METADATA, {
-      enumerable: false,
-      configurable: false,
-      writable: false,
-      value: rev,
-    });
+    if (!rev) return model;
     CouchDBAdapter.setMetadata(model as any, rev);
     return model;
   }
@@ -508,7 +504,7 @@ export abstract class CouchDBAdapter<
     Object.defineProperty(model, PersistenceKeys.METADATA, {
       enumerable: false,
       configurable: true,
-      writable: false,
+      writable: true,
       value: metadata,
     });
   }
