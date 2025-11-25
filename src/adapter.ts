@@ -73,7 +73,6 @@ export abstract class CouchDBAdapter<
   CONN,
   C extends Context<any>,
 > extends Adapter<CONF, CONN, MangoQuery, C> {
-
   protected constructor(scope: CONF, flavour: string, alias?: string) {
     super(scope, flavour, alias);
     [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
@@ -284,7 +283,6 @@ export abstract class CouchDBAdapter<
     clazz: Constructor<M>,
     id: PrimaryKeyType,
     model: Record<string, any>,
-
     ...args: MaybeContextualArg<C>
   ) {
     const tableName = Model.tableName(clazz);
