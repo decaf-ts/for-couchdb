@@ -266,7 +266,7 @@ export class CouchDBStatement<
    * @return {Promise<R>} A promise that resolves to the query results
    */
   override async raw<R>(rawInput: MangoQuery, ...args: any[]): Promise<R> {
-    const { ctx } = Adapter.logCtx(args, this.raw);
+    const { ctx } = this.logCtx(args, this.raw);
 
     const results: any[] = await this.adapter.raw(rawInput, true, ctx);
 
