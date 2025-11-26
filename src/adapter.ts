@@ -251,7 +251,7 @@ export abstract class CouchDBAdapter<
       Object.assign(record, models[count]);
       return record;
     });
-    return [tableName, ids, records, ...ctxArgs];
+    return [clazz, ids, records, ...ctxArgs];
   }
 
   /**
@@ -297,7 +297,7 @@ export abstract class CouchDBAdapter<
       );
     Object.assign(record, model);
     record[CouchDBKeys.REV] = rev;
-    return [tableName, id, record, ...ctxArgs];
+    return [clazz, id, record, ...ctxArgs];
   }
 
   /**
@@ -349,7 +349,7 @@ export abstract class CouchDBAdapter<
       record[CouchDBKeys.REV] = rev;
       return record;
     });
-    return [tableName, ids, records, ...ctxArgs];
+    return [clazz, ids, records, ...ctxArgs];
   }
 
   /**
