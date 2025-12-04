@@ -4,26 +4,26 @@ import {
   type SequenceOptions,
   PersistenceKeys,
   ConnectionError,
-  Repository,
 } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
   ConflictError,
-  Context,
   InternalError,
   NotFoundError,
   prefixMethod,
-  RepositoryFlags,
 } from "@decaf-ts/db-decorators";
-
+import type { Context, PrimaryKeyType } from "@decaf-ts/db-decorators";
 import { CouchDBSequence } from "./sequences/Sequence";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
-import { MangoQuery } from "./types";
+import { type MangoQuery } from "./types";
 import { CouchDBStatement } from "./query";
-import { final } from "@decaf-ts/core";
-import { Constructor } from "@decaf-ts/decoration";
+import { MaybeContextualArg } from "@decaf-ts/core";
+import type { Constructor } from "@decaf-ts/decoration";
+import { final } from "@decaf-ts/logging";
+import { CouchDBRepository } from "./repository";
+import { Repository } from "@decaf-ts/core";
 
 /**
  * @description Abstract adapter for CouchDB database operations
@@ -69,12 +69,11 @@ import { Constructor } from "@decaf-ts/decoration";
  * }
  */
 export abstract class CouchDBAdapter<
-  Y,
+  CONF,
   CONN,
-  F extends RepositoryFlags,
-  C extends Context<F>,
-> extends Adapter<Y, CONN, MangoQuery, F, C> {
-  protected constructor(scope: Y, flavour: string, alias?: string) {
+  C extends Context<any>,
+> extends Adapter<CONF, CONN, MangoQuery, C> {
+  protected constructor(scope: CONF, flavour: string, alias?: string) {
     super(scope, flavour, alias);
     [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
       const name = m.name;
@@ -89,7 +88,11 @@ export abstract class CouchDBAdapter<
    * @return {CouchDBStatement<M, any>} A new CouchDBStatement instance
    */
   @final()
-  Statement<M extends Model>(): CouchDBStatement<M, any> {
+  Statement<M extends Model>(): CouchDBStatement<
+    M,
+    Adapter<CONF, CONN, MangoQuery, C>,
+    any
+  > {
     return new CouchDBStatement(this);
   }
 
@@ -114,6 +117,12 @@ export abstract class CouchDBAdapter<
     return this.index(...managedModels);
   }
 
+  override repository<
+    R extends Repository<any, Adapter<CONF, CONN, MangoQuery, C>>,
+  >(): Constructor<R> {
+    return CouchDBRepository as unknown as Constructor<R>;
+  }
+
   /**
    * @description Creates indexes for the given models
    * @summary Abstract method that must be implemented to create database indexes for the specified models
@@ -127,13 +136,17 @@ export abstract class CouchDBAdapter<
 
   /**
    * @description Executes a raw Mango query against the database
-   * @summary Abstract method that must be implemented to execute raw Mango queries
+   * @summary Abstract method that must be implemented to execute raw Mango queries. Implementations may treat the first
+   * additional argument as a boolean `docsOnly` flag before the contextual arguments provided by repositories.
    * @template R - The result type
    * @param {MangoQuery} rawInput - The raw Mango query to execute
-   * @param {boolean} docsOnly - Whether to return only the documents or the full response
+   * @param {...MaybeContextualArg<C>} args - Optional `docsOnly` flag followed by contextual arguments
    * @return {Promise<R>} A promise that resolves to the query result
    */
-  abstract override raw<R>(rawInput: MangoQuery, docsOnly: boolean): Promise<R>;
+  abstract override raw<R>(
+    rawInput: MangoQuery,
+    ...args: MaybeContextualArg<C>
+  ): Promise<R>;
 
   /**
    * @description Assigns metadata to a model
@@ -147,12 +160,8 @@ export abstract class CouchDBAdapter<
     model: Record<string, any>,
     rev: string
   ): Record<string, any> {
-    Object.defineProperty(model, PersistenceKeys.METADATA, {
-      enumerable: false,
-      configurable: false,
-      writable: false,
-      value: rev,
-    });
+    if (!rev) return model;
+    CouchDBAdapter.setMetadata(model as any, rev);
     return model;
   }
 
@@ -169,7 +178,7 @@ export abstract class CouchDBAdapter<
     revs: string[]
   ): Record<string, any>[] {
     models.forEach((m, i) => {
-      Repository.setMetadata(m as any, revs[i]);
+      CouchDBAdapter.setMetadata(m as any, revs[i]);
       return m;
     });
     return models;
@@ -184,16 +193,19 @@ export abstract class CouchDBAdapter<
    * @return A tuple containing the tableName, id, and prepared record
    */
   @final()
-  protected createPrefix(
-    tableName: string,
-    id: string | number,
-    model: Record<string, any>
-  ) {
+  protected createPrefix<M extends Model>(
+    clazz: Constructor<M>,
+    id: PrimaryKeyType,
+    model: Record<string, any>,
+    ...args: MaybeContextualArg<C>
+  ): [Constructor<M>, PrimaryKeyType, Record<string, any>, ...any[], Context] {
+    const { ctxArgs } = this.logCtx(args, this.createPrefix);
+    const tableName = Model.tableName(clazz);
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
-    record[CouchDBKeys.ID] = this.generateId(tableName, id);
+    record[CouchDBKeys.ID] = this.generateId(tableName, id as any);
     Object.assign(record, model);
-    return [tableName, id, record];
+    return [clazz, id, record, ...ctxArgs];
   }
 
   /**
@@ -205,11 +217,11 @@ export abstract class CouchDBAdapter<
    * @param {...any[]} args - Additional arguments
    * @return {Promise<Record<string, any>>} A promise that resolves to the created record
    */
-  abstract override create(
-    tableName: string,
-    id: string | number,
+  abstract override create<M extends Model>(
+    tableName: Constructor<M>,
+    id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -222,14 +234,16 @@ export abstract class CouchDBAdapter<
    * @throws {InternalError} If ids and models arrays have different lengths
    */
   @final()
-  protected createAllPrefix(
-    tableName: string,
+  protected createAllPrefix<M extends Model>(
+    clazz: Constructor<M>,
     ids: string[] | number[],
-    models: Record<string, any>[]
+    models: Record<string, any>[],
+    ...args: MaybeContextualArg<C>
   ) {
+    const tableName = Model.tableName(clazz);
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
-
+    const { ctxArgs } = this.logCtx(args, this.createAllPrefix);
     const records = ids.map((id, count) => {
       const record: Record<string, any> = {};
       record[CouchDBKeys.TABLE] = tableName;
@@ -237,7 +251,7 @@ export abstract class CouchDBAdapter<
       Object.assign(record, models[count]);
       return record;
     });
-    return [tableName, ids, records];
+    return [clazz, ids, records, ...ctxArgs];
   }
 
   /**
@@ -248,10 +262,10 @@ export abstract class CouchDBAdapter<
    * @param {...any[]} args - Additional arguments
    * @return {Promise<Record<string, any>>} A promise that resolves to the read record
    */
-  abstract override read(
-    tableName: string,
-    id: string | number,
-    ...args: any[]
+  abstract override read<M extends Model>(
+    tableName: Constructor<M>,
+    id: PrimaryKeyType,
+    ...args: MaybeContextualArg<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -260,15 +274,19 @@ export abstract class CouchDBAdapter<
    * @param {string} tableName - The name of the table
    * @param {string|number} id - The ID of the record
    * @param model - The model to prepare
+   * @param [args] - optional args for subclassing
    * @return A tuple containing the tableName, id, and prepared record
    * @throws {InternalError} If no revision number is found in the model
    */
   @final()
-  updatePrefix(
-    tableName: string,
-    id: string | number,
-    model: Record<string, any>
+  updatePrefix<M extends Model>(
+    clazz: Constructor<M>,
+    id: PrimaryKeyType,
+    model: Record<string, any>,
+    ...args: MaybeContextualArg<C>
   ) {
+    const tableName = Model.tableName(clazz);
+    const { ctxArgs } = this.logCtx(args, this.updatePrefix);
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
     record[CouchDBKeys.ID] = this.generateId(tableName, id);
@@ -279,7 +297,7 @@ export abstract class CouchDBAdapter<
       );
     Object.assign(record, model);
     record[CouchDBKeys.REV] = rev;
-    return [tableName, id, record];
+    return [clazz, id, record, ...ctxArgs];
   }
 
   /**
@@ -291,11 +309,11 @@ export abstract class CouchDBAdapter<
    * @param {any[]} args - Additional arguments
    * @return A promise that resolves to the updated record
    */
-  abstract override update(
-    tableName: string,
-    id: string | number,
+  abstract override update<M extends Model>(
+    tableName: Constructor<M>,
+    id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: any[]
+    ...args: MaybeContextualArg<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -308,14 +326,16 @@ export abstract class CouchDBAdapter<
    * @throws {InternalError} If ids and models arrays have different lengths or if no revision number is found in a model
    */
   @final()
-  protected updateAllPrefix(
-    tableName: string,
-    ids: string[] | number[],
-    models: Record<string, any>[]
+  protected updateAllPrefix<M extends Model>(
+    clazz: Constructor<M>,
+    ids: PrimaryKeyType[],
+    models: Record<string, any>[],
+    ...args: MaybeContextualArg<C>
   ) {
+    const tableName = Model.tableName(clazz);
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
-
+    const { ctxArgs } = this.logCtx(args, this.updateAllPrefix);
     const records = ids.map((id, count) => {
       const record: Record<string, any> = {};
       record[CouchDBKeys.TABLE] = tableName;
@@ -329,21 +349,21 @@ export abstract class CouchDBAdapter<
       record[CouchDBKeys.REV] = rev;
       return record;
     });
-    return [tableName, ids, records];
+    return [clazz, ids, records, ...ctxArgs];
   }
 
   /**
    * @description Deletes a record from the database
    * @summary Abstract method that must be implemented to delete a record
-   * @param {string} tableName - The name of the table
-   * @param {string|number} id - The ID of the record
+   * @param {Constructor<M>} tableName - The name of the table
+   * @param {PrimaryKeyType} id - The ID of the record
    * @param {any[]} args - Additional arguments
    * @return A promise that resolves to the deleted record
    */
-  abstract override delete(
-    tableName: string,
-    id: string | number,
-    ...args: any[]
+  abstract override delete<M extends Model>(
+    tableName: Constructor<M>,
+    id: PrimaryKeyType,
+    ...args: MaybeContextualArg<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -353,7 +373,7 @@ export abstract class CouchDBAdapter<
    * @param {string|number} id - The ID of the record
    * @return {string} The generated CouchDB document ID
    */
-  protected generateId(tableName: string, id: string | number) {
+  protected generateId(tableName: string, id: PrimaryKeyType) {
     return [tableName, id].join(CouchDBKeys.SEPARATOR);
   }
 
@@ -364,7 +384,7 @@ export abstract class CouchDBAdapter<
    * @param {string} [reason] - Optional reason for the error
    * @return {BaseError} The parsed error as a BaseError
    */
-  parseError(err: Error | string, reason?: string): BaseError {
+  parseError<E extends BaseError>(err: Error | string, reason?: string): E {
     return CouchDBAdapter.parseError(err, reason);
   }
 
@@ -434,14 +454,17 @@ export abstract class CouchDBAdapter<
    *     ErrorTypes-->>Caller: InternalError
    *   end
    */
-  protected static parseError(err: Error | string, reason?: string): BaseError {
+  protected static parseError<E extends BaseError>(
+    err: Error | string,
+    reason?: string
+  ): E {
     if (err instanceof BaseError) return err as any;
     let code: string = "";
     if (typeof err === "string") {
       code = err;
       if (code.match(/already exist|update conflict/g))
-        return new ConflictError(code);
-      if (code.match(/missing|deleted/g)) return new NotFoundError(code);
+        return new ConflictError(code) as E;
+      if (code.match(/missing|deleted/g)) return new NotFoundError(code) as E;
     } else if ((err as any).code) {
       code = (err as any).code;
       reason = reason || err.message;
@@ -456,17 +479,63 @@ export abstract class CouchDBAdapter<
       case "401":
       case "412":
       case "409":
-        return new ConflictError(reason as string);
+        return new ConflictError(reason as string) as E;
       case "404":
-        return new NotFoundError(reason as string);
+        return new NotFoundError(reason as string) as E;
       case "400":
         if (code.toString().match(/No\sindex\sexists/g))
-          return new IndexError(err);
-        return new InternalError(err);
+          return new IndexError(err) as E;
+        return new InternalError(err) as E;
       default:
         if (code.toString().match(/ECONNREFUSED/g))
-          return new ConnectionError(err);
-        return new InternalError(err);
+          return new ConnectionError(err) as E;
+        return new InternalError(err) as E;
     }
+  }
+
+  // TODO why do we need this?
+  /**
+   * @description Sets metadata on a model instance.
+   * @summary Attaches metadata to a model instance using a non-enumerable property.
+   * @template M - The model type that extends Model.
+   * @param {M} model - The model instance.
+   * @param {any} metadata - The metadata to attach to the model.
+   */
+  static setMetadata<M extends Model>(model: M, metadata: any) {
+    Object.defineProperty(model, PersistenceKeys.METADATA, {
+      enumerable: false,
+      configurable: true,
+      writable: true,
+      value: metadata,
+    });
+  }
+
+  /**
+   * @description Gets metadata from a model instance.
+   * @summary Retrieves previously attached metadata from a model instance.
+   * @template M - The model type that extends Model.
+   * @param {M} model - The model instance.
+   * @return {any} The metadata or undefined if not found.
+   */
+  static getMetadata<M extends Model>(model: M) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      model,
+      PersistenceKeys.METADATA
+    );
+    return descriptor ? descriptor.value : undefined;
+  }
+
+  /**
+   * @description Removes metadata from a model instance.
+   * @summary Deletes the metadata property from a model instance.
+   * @template M - The model type that extends Model.
+   * @param {M} model - The model instance.
+   */
+  static removeMetadata<M extends Model>(model: M) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      model,
+      PersistenceKeys.METADATA
+    );
+    if (descriptor) delete (model as any)[PersistenceKeys.METADATA];
   }
 }

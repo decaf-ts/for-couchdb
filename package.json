@@ -1,6 +1,6 @@
 {
   "name": "@decaf-ts/for-couchdb",
-  "version": "0.3.15",
+  "version": "0.4.5",
   "description": "template for ts projects",
   "type": "module",
   "exports": {
@@ -90,9 +90,8 @@
     "@decaf-ts/db-decorators": "latest",
     "@decaf-ts/decoration": "latest",
     "@decaf-ts/decorator-validation": "latest",
-    "@decaf-ts/logging": "latest",
     "@decaf-ts/injectable-decorators": "latest",
-    "@decaf-ts/reflection": "latest",
+    "@decaf-ts/logging": "latest",
     "@decaf-ts/transactional-decorators": "latest"
   }
 }
