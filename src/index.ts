@@ -1,8 +1,6 @@
 import { Metadata } from "@decaf-ts/decoration";
 
 export * from "./indexes";
-export * from "./model";
-export * from "./sequences";
 export * from "./repository";
 export * from "./adapter";
 export * from "./constants";

@@ -14,7 +14,6 @@ import {
   prefixMethod,
 } from "@decaf-ts/db-decorators";
 import type { Context, PrimaryKeyType } from "@decaf-ts/db-decorators";
-import { CouchDBSequence } from "./sequences/Sequence";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { type MangoQuery } from "./types";
@@ -94,17 +93,6 @@ export abstract class CouchDBAdapter<
     any
   > {
     return new CouchDBStatement(this);
-  }
-
-  /**
-   * @description Creates a new CouchDB sequence
-   * @summary Factory method that creates a new CouchDBSequence instance for managing sequences
-   * @param {SequenceOptions} options - The options for the sequence
-   * @return {Promise<Sequence>} A promise that resolves to a new Sequence instance
-   */
-  @final()
-  async Sequence(options: SequenceOptions): Promise<Sequence> {
-    return new CouchDBSequence(options, this);
   }
 
   /**
