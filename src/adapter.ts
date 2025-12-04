@@ -1,10 +1,4 @@
-import {
-  Adapter,
-  Sequence,
-  type SequenceOptions,
-  PersistenceKeys,
-  ConnectionError,
-} from "@decaf-ts/core";
+import { Adapter, PersistenceKeys, ConnectionError } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
