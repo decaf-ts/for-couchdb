@@ -133,9 +133,8 @@ export class CouchDBRepository<
       this.adapter,
       this._overrides || {}
     );
-    const shouldRunHandlers =
-      contextArgs.context.get("ignoreHandlers") !== false;
-    const shouldValidate = !contextArgs.context.get("ignoreValidation");
+    const ignoreHandlers = contextArgs.context.get("ignoreHandlers");
+    const ignoreValidate = contextArgs.context.get("ignoreValidation");
     const pk = model[this.pk] as string;
     if (!pk)
       throw new InternalError(
@@ -143,7 +142,7 @@ export class CouchDBRepository<
       );
     const oldModel = await this.read(pk, ...contextArgs.args);
     model = Model.merge(oldModel, model, this.class);
-    if (shouldRunHandlers)
+    if (!ignoreHandlers)
       await enforceDBDecorators<M, Repository<M, A>, any>(
         this,
         contextArgs.context,
@@ -153,7 +152,7 @@ export class CouchDBRepository<
         oldModel
       );
 
-    if (shouldValidate) {
+    if (!ignoreValidate) {
       const errors = await Promise.resolve(
         model.hasErrors(
           oldModel,
@@ -188,9 +187,8 @@ export class CouchDBRepository<
       this.adapter,
       this._overrides || {}
     );
-    const shouldRunHandlers =
-      contextArgs.context.get("ignoreHandlers") !== false;
-    const shouldValidate = !contextArgs.context.get("ignoreValidation");
+    const ignoreHandlers = contextArgs.context.get("ignoreHandlers");
+    const ignoreValidate = contextArgs.context.get("ignoreValidation");
     const ids = models.map((m) => {
       const id = m[this.pk] as string;
       if (!id) throw new InternalError("missing id on update operation");
@@ -203,7 +201,7 @@ export class CouchDBRepository<
       if (oldMetadata) CouchDBAdapter.setMetadata(m, oldMetadata);
       return m;
     });
-    if (shouldRunHandlers)
+    if (!ignoreHandlers)
       await Promise.all(
         models.map((m, i) =>
           enforceDBDecorators<M, Repository<M, A>, any>(
@@ -217,7 +215,7 @@ export class CouchDBRepository<
         )
       );
 
-    if (shouldValidate) {
+    if (!ignoreValidate) {
       const ignoredProps =
         contextArgs.context.get("ignoredValidationProperties") || [];
 
