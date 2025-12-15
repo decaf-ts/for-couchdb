@@ -1,4 +1,10 @@
-import { Adapter, PersistenceKeys, ConnectionError } from "@decaf-ts/core";
+import {
+  Adapter,
+  PersistenceKeys,
+  ConnectionError,
+  Paginator,
+  RawResult,
+} from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
@@ -6,14 +12,14 @@ import {
   InternalError,
   NotFoundError,
   prefixMethod,
+  type PrimaryKeyType,
 } from "@decaf-ts/db-decorators";
-import type { Context, PrimaryKeyType } from "@decaf-ts/db-decorators";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { type MangoQuery } from "./types";
-import { CouchDBStatement } from "./query";
-import { MaybeContextualArg } from "@decaf-ts/core";
-import type { Constructor } from "@decaf-ts/decoration";
+import { CouchDBPaginator, CouchDBStatement } from "./query";
+import { type MaybeContextualArg, Context } from "@decaf-ts/core";
+import { type Constructor } from "@decaf-ts/decoration";
 import { final } from "@decaf-ts/logging";
 import { CouchDBRepository } from "./repository";
 import { Repository } from "@decaf-ts/core";
@@ -89,6 +95,14 @@ export abstract class CouchDBAdapter<
     return new CouchDBStatement(this);
   }
 
+  override Paginator<M extends Model>(
+    query: MangoQuery,
+    size: number,
+    clazz: Constructor<M>
+  ): Paginator<M, any, MangoQuery> {
+    return new CouchDBPaginator(this, query, size, clazz);
+  }
+
   /**
    * @description Initializes the adapter by creating indexes for all managed models
    * @summary Sets up the necessary database indexes for all models managed by this adapter
@@ -125,10 +139,11 @@ export abstract class CouchDBAdapter<
    * @param {...MaybeContextualArg<C>} args - Optional `docsOnly` flag followed by contextual arguments
    * @return {Promise<R>} A promise that resolves to the query result
    */
-  abstract override raw<R>(
+  abstract override raw<R, D extends boolean>(
     rawInput: MangoQuery,
+    docsOnly: D,
     ...args: MaybeContextualArg<C>
-  ): Promise<R>;
+  ): Promise<RawResult<R, D>>;
 
   /**
    * @description Assigns metadata to a model

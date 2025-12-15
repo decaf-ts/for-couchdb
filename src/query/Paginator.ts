@@ -1,4 +1,9 @@
-import { Paginator, PagingError, Sequence } from "@decaf-ts/core";
+import {
+  MaybeContextualArg,
+  Paginator,
+  PagingError,
+  Sequence,
+} from "@decaf-ts/core";
 import { DBKeys, InternalError } from "@decaf-ts/db-decorators";
 import { MangoQuery, MangoResponse } from "../types";
 import { Model } from "@decaf-ts/decorator-validation";
@@ -152,8 +157,12 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
    *     CouchDBPaginator-->>Client: Return results
    *   end
    */
-  async page(page: number = 1): Promise<R[]> {
-    const { ctx } = this.adapter["logCtx"]([page], this.page);
+  override async page(
+    page: number = 1,
+    ...args: MaybeContextualArg<any>
+  ): Promise<R[]> {
+    const { ctxArgs, ctx } = this.adapter["logCtx"](args, this.page);
+    if (this.isPreparedStatement()) return this.pagePrepared(page, ...ctxArgs);
     const statement = Object.assign({}, this.statement);
 
     if (!this._recordCount || !this._totalPages) {
@@ -178,11 +187,11 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
         throw new PagingError("No bookmark. Did you start in the first page?");
       statement["bookmark"] = this.bookMark;
     }
-    const rawResult: MangoResponse<any> = await this.adapter.raw(
+    const rawResult: MangoResponse<any> = (await this.adapter.raw(
       statement,
       false,
       ctx
-    );
+    )) as any;
 
     const { docs, bookmark, warning } = rawResult;
     if (warning) this.log.for(this.page).warn(warning);

@@ -208,28 +208,6 @@ export class CouchDBStatement<
   }
 
   /**
-   * @description Creates a paginator for the statement
-   * @summary Builds the query and returns a CouchDBPaginator for paginated results
-   * @template R - The result type
-   * @param {number} size - The page size
-   * @return {Promise<Paginator<M, R, MangoQuery>>} A promise that resolves to a paginator
-   * @throws {InternalError} If there's an error building the query
-   */
-  async paginate<R>(size: number): Promise<Paginator<M, R, MangoQuery>> {
-    try {
-      const query: MangoQuery = this.build();
-      return new CouchDBPaginator(
-        this.adapter as any,
-        query,
-        size,
-        this.fromSelector
-      );
-    } catch (e: any) {
-      throw new InternalError(e);
-    }
-  }
-
-  /**
    * @description Processes a record from CouchDB
    * @summary Extracts the ID from a CouchDB document and reverts it to a model instance
    * @param {any} r - The raw record from CouchDB
