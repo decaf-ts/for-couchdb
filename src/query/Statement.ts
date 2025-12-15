@@ -3,7 +3,6 @@ import {
   GroupOperator,
   Operator,
   OrderDirection,
-  Paginator,
   Sequence,
   Statement,
 } from "@decaf-ts/core";
@@ -16,8 +15,7 @@ import {
   CouchDBOperator,
   CouchDBQueryLimit,
 } from "./constants";
-import { CouchDBPaginator } from "./Paginator";
-import { DBKeys, InternalError } from "@decaf-ts/db-decorators";
+import { DBKeys } from "@decaf-ts/db-decorators";
 import type { Context } from "@decaf-ts/db-decorators";
 import { Metadata } from "@decaf-ts/decoration";
 import { Adapter } from "@decaf-ts/core";
