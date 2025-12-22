@@ -35,15 +35,9 @@ import { Constructor, Metadata } from "@decaf-ts/decoration";
  */
 export class CouchDBPaginator<M extends Model, R> extends Paginator<
   M,
-  R,
+  M[],
   MangoQuery
 > {
-  /**
-   * @description Bookmark for CouchDB pagination
-   * @summary Stores the bookmark returned by CouchDB for continuing pagination
-   */
-  private bookMark?: string;
-
   /**
    * @description Gets the total number of pages
    * @summary Not supported in CouchDB - throws an error when accessed
@@ -160,7 +154,7 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
   override async page(
     page: number = 1,
     ...args: MaybeContextualArg<any>
-  ): Promise<R[]> {
+  ): Promise<M[]> {
     const { ctxArgs, ctx } = this.adapter["logCtx"](args, this.page);
     if (this.isPreparedStatement()) return this.pagePrepared(page, ...ctxArgs);
     const statement = Object.assign({}, this.statement);
@@ -183,9 +177,9 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
     this.validatePage(page);
 
     if (page !== 1) {
-      if (!this.bookMark)
+      if (!this._bookmark)
         throw new PagingError("No bookmark. Did you start in the first page?");
-      statement["bookmark"] = this.bookMark;
+      statement["bookmark"] = this._bookmark as string;
     }
     const rawResult: MangoResponse<any> = (await this.adapter.raw(
       statement,
@@ -216,7 +210,7 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
               ctx
             );
           });
-    this.bookMark = bookmark;
+    this._bookmark = bookmark;
     this._currentPage = page;
     return results;
   }
