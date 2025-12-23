@@ -60,7 +60,8 @@
   "files": [
     "lib",
     "dist",
-    "docker"
+    "docker",
+    "workdocs/assets/slogans.json"
   ],
   "keywords": [
     "couchdb",
