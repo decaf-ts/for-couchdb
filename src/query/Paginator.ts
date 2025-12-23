@@ -11,7 +11,7 @@ import { CouchDBAdapter } from "../adapter";
 import { Constructor, Metadata } from "@decaf-ts/decoration";
 
 /**
- * @description Paginator for CouchDB query results
+ * @description Paginator for ConuchDB query results
  * @summary Implements pagination for CouchDB queries using bookmarks for efficient navigation through result sets
  * @template M - The model type that extends Model
  * @template R - The result type
