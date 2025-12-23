@@ -4,7 +4,7 @@ import {
   PagingError,
   Sequence,
 } from "@decaf-ts/core";
-import { DBKeys, InternalError } from "@decaf-ts/db-decorators";
+import { DBKeys } from "@decaf-ts/db-decorators";
 import { MangoQuery, MangoResponse } from "../types";
 import { Model } from "@decaf-ts/decorator-validation";
 import { CouchDBAdapter } from "../adapter";
@@ -38,28 +38,6 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
   M[],
   MangoQuery
 > {
-  /**
-   * @description Gets the total number of pages
-   * @summary Not supported in CouchDB - throws an error when accessed
-   * @return {number} Never returns as it throws an error
-   * @throws {InternalError} Always throws as this functionality is not available in CouchDB
-   */
-  override get total(): number {
-    throw new InternalError(`The total pages api is not available for couchdb`);
-  }
-
-  /**
-   * @description Gets the total record count
-   * @summary Not supported in CouchDB - throws an error when accessed
-   * @return {number} Never returns as it throws an error
-   * @throws {InternalError} Always throws as this functionality is not available in CouchDB
-   */
-  override get count(): number {
-    throw new InternalError(
-      `The record count api is not available for couchdb`
-    );
-  }
-
   /**
    * @description Creates a new CouchDBPaginator instance
    * @summary Initializes a paginator for CouchDB query results
@@ -163,7 +141,7 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
       this._totalPages = this._recordCount = 0;
       const results: R[] =
         (await this.adapter.raw(
-          { ...statement, limit: undefined },
+          { ...statement, limit: Number.MAX_VALUE },
           true,
           ctx
         )) || [];
