@@ -34,19 +34,19 @@ export async function reAuth(con: any, user: string, pass: string) {
  *   participant wrapDocumentScope
  *   participant DB
  *   participant reAuth
- *   
+ *
  *   Client->>wrapDocumentScope: con, dbName, user, pass
  *   wrapDocumentScope->>DB: con.use(dbName)
  *   Note over wrapDocumentScope: Wrap DB methods with re-auth
- *   
+ *
  *   loop For each method (insert, get, put, destroy, find)
  *     wrapDocumentScope->>wrapDocumentScope: Store original method
  *     wrapDocumentScope->>wrapDocumentScope: Define new method with re-auth
  *   end
- *   
+ *
  *   wrapDocumentScope->>wrapDocumentScope: Add NATIVE property with con value
  *   wrapDocumentScope-->>Client: Return wrapped DB
- *   
+ *
  *   Note over Client: Later when client uses DB methods
  *   Client->>DB: Any wrapped method call
  *   DB->>reAuth: Authenticate before operation
@@ -60,7 +60,7 @@ export function wrapDocumentScope(
   user: string,
   pass: string
 ): any {
-  const db = con.use(dbName);
+  const db = con.use ? con.use(dbName) : con;
   ["insert", "get", "put", "destroy", "find"].forEach((k) => {
     const original = (db as Record<string, any>)[k];
     Object.defineProperty(db, k, {
@@ -135,12 +135,12 @@ export function generateIndexName(
  *   participant Caller
  *   participant generateIndexDoc
  *   participant generateIndexName
- *   
+ *
  *   Caller->>generateIndexDoc: attribute, tableName, compositions, order, separator
- *   
+ *
  *   Note over generateIndexDoc: Create partial filter selector
  *   generateIndexDoc->>generateIndexDoc: Set up filter for tableName
- *   
+ *
  *   alt order is specified
  *     Note over generateIndexDoc: Create ordered fields array
  *     generateIndexDoc->>generateIndexDoc: Create orderProp for attribute
@@ -151,10 +151,10 @@ export function generateIndexName(
  *     Note over generateIndexDoc: Create simple fields array
  *     generateIndexDoc->>generateIndexDoc: Use attribute, compositions, and table as strings
  *   end
- *   
+ *
  *   generateIndexDoc->>generateIndexName: Generate index name
  *   generateIndexName-->>generateIndexDoc: Return name
- *   
+ *
  *   Note over generateIndexDoc: Create final index request
  *   generateIndexDoc-->>Caller: Return CreateIndexRequest
  */
