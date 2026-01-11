@@ -4,6 +4,7 @@ import {
   ConnectionError,
   Paginator,
   RawResult,
+  ContextualArgs,
 } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
@@ -18,7 +19,7 @@ import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
 import { type MangoQuery } from "./types";
 import { CouchDBPaginator, CouchDBStatement } from "./query";
-import { type MaybeContextualArg, Context } from "@decaf-ts/core";
+import { Context } from "@decaf-ts/core";
 import { type Constructor } from "@decaf-ts/decoration";
 import { final } from "@decaf-ts/logging";
 import { CouchDBRepository } from "./repository";
@@ -142,7 +143,7 @@ export abstract class CouchDBAdapter<
   abstract override raw<R, D extends boolean>(
     rawInput: MangoQuery,
     docsOnly: D,
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ): Promise<RawResult<R, D>>;
 
   /**
@@ -194,7 +195,7 @@ export abstract class CouchDBAdapter<
     clazz: Constructor<M>,
     id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ): [Constructor<M>, PrimaryKeyType, Record<string, any>, ...any[], Context] {
     const { ctxArgs } = this.logCtx(args, this.createPrefix);
     const tableName = Model.tableName(clazz);
@@ -218,7 +219,7 @@ export abstract class CouchDBAdapter<
     tableName: Constructor<M>,
     id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -235,7 +236,7 @@ export abstract class CouchDBAdapter<
     clazz: Constructor<M>,
     ids: string[] | number[],
     models: Record<string, any>[],
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ) {
     const tableName = Model.tableName(clazz);
     if (ids.length !== models.length)
@@ -262,7 +263,7 @@ export abstract class CouchDBAdapter<
   abstract override read<M extends Model>(
     tableName: Constructor<M>,
     id: PrimaryKeyType,
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -280,7 +281,7 @@ export abstract class CouchDBAdapter<
     clazz: Constructor<M>,
     id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ) {
     const tableName = Model.tableName(clazz);
     const { ctxArgs } = this.logCtx(args, this.updatePrefix);
@@ -310,7 +311,7 @@ export abstract class CouchDBAdapter<
     tableName: Constructor<M>,
     id: PrimaryKeyType,
     model: Record<string, any>,
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ): Promise<Record<string, any>>;
 
   /**
@@ -327,7 +328,7 @@ export abstract class CouchDBAdapter<
     clazz: Constructor<M>,
     ids: PrimaryKeyType[],
     models: Record<string, any>[],
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ) {
     const tableName = Model.tableName(clazz);
     if (ids.length !== models.length)
@@ -360,7 +361,7 @@ export abstract class CouchDBAdapter<
   abstract override delete<M extends Model>(
     tableName: Constructor<M>,
     id: PrimaryKeyType,
-    ...args: MaybeContextualArg<C>
+    ...args: ContextualArgs<C>
   ): Promise<Record<string, any>>;
 
   /**
