@@ -32,7 +32,7 @@ import { Constructor, Metadata } from "@decaf-ts/decoration";
  * // Get the next page
  * const page2 = await paginator.page(2);
  */
-export class CouchDBPaginator<M extends Model, R> extends Paginator<
+export class CouchDBPaginator<M extends Model> extends Paginator<
   M,
   M[],
   MangoQuery
@@ -129,26 +129,35 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
    *   end
    */
   override async page(
-    page: number = 1,
+    page: number | undefined = 1,
+    bookmark?: any,
     ...args: MaybeContextualArg<any>
   ): Promise<M[]> {
-    const { ctxArgs, ctx } = this.adapter["logCtx"](args, this.page);
-    if (this.isPreparedStatement()) return this.pagePrepared(page, ...ctxArgs);
+    const { log, ctxArgs, ctx } = this.adapter["logCtx"](
+      [bookmark, ...args],
+      this.page
+    );
+    if (this.isPreparedStatement())
+      return await this.pagePrepared(page, ...ctxArgs);
     const statement = Object.assign({}, this.statement);
 
     if (!this._recordCount || !this._totalPages) {
       this._totalPages = this._recordCount = 0;
-      const results: R[] =
-        (await this.adapter.raw(
+      const countResults =
+        (await this.adapter.raw<M[], true>(
           { ...statement, limit: Number.MAX_VALUE },
           true,
-          ctx
+          ...ctxArgs
         )) || [];
-      this._recordCount = results.length;
+      this._recordCount = countResults.length;
       if (this._recordCount > 0) {
         const size = statement?.limit || this.size;
         this._totalPages = Math.ceil(this._recordCount / size);
+        return await this.page(page, ...ctxArgs);
       }
+    } else {
+      page = this.validatePage(page);
+      statement.skip = (page - 1) * this.size;
     }
 
     this.validatePage(page);
@@ -161,18 +170,18 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
     const rawResult: MangoResponse<any> = (await this.adapter.raw(
       statement,
       false,
-      ctx
+      ...ctxArgs
     )) as any;
 
-    const { docs, bookmark, warning } = rawResult;
-    if (warning) this.log.for(this.page).warn(warning);
+    const { docs, bookmark: nextBookmark, warning } = rawResult;
+    if (warning) log.warn(warning);
     if (!this.clazz) throw new PagingError("No statement target defined");
     const id = Model.pk(this.clazz);
     const type = Metadata.get(
       this.clazz,
       Metadata.key(DBKeys.ID, id as string)
     )?.type;
-    const results =
+    const pageResults =
       statement.fields && statement.fields.length
         ? docs // has fields means its not full model
         : docs.map((d: any) => {
@@ -184,8 +193,8 @@ export class CouchDBPaginator<M extends Model, R> extends Paginator<
               ctx
             );
           });
-    this._bookmark = bookmark;
+    this._bookmark = nextBookmark;
     this._currentPage = page;
-    return results;
+    return pageResults;
   }
 }

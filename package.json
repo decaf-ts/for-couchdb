@@ -18,7 +18,7 @@
     "reset": "rm -rf * && git checkout . && git pull && npm run do-install",
     "build": "npx build-scripts --dev",
     "build:prod": "npx build-scripts --prod",
-    "test": "jest --runInBand --coverage --detectOpenHandles",
+    "test": "jest --runInBand --coverage --detectOpenHandles --passWithNoTests",
     "test:unit": "jest --testPathPattern=\"/tests/unit\" --passWithNoTests --detectOpenHandles",
     "test:integration": "jest --testPathPattern=\"/tests/(integration)\" --passWithNoTests --detectOpenHandles",
     "test:all": "jest --testPathPattern=\"/tests\" --passWithNoTests --detectOpenHandles",

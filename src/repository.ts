@@ -4,12 +4,12 @@ import { Constructor } from "@decaf-ts/decoration";
 import { CouchDBAdapter } from "./adapter";
 import { ContextOf } from "@decaf-ts/core";
 import {
-  Context,
   enforceDBDecorators,
   reduceErrorsToPrint,
   InternalError,
   OperationKeys,
   ValidationError,
+  BulkCrudOperationKeys,
 } from "@decaf-ts/db-decorators";
 import type { PrimaryKeyType } from "@decaf-ts/db-decorators";
 
@@ -127,16 +127,15 @@ export class CouchDBRepository<
     model: M,
     ...args: MaybeContextualArg<ContextOf<A>>
   ): Promise<[M, ...args: any[], ContextOf<A>, M | undefined]> {
-    const contextArgs = await Context.args(
-      OperationKeys.UPDATE,
-      this.class,
-      args,
-      this.adapter,
-      this._overrides || {}
-    );
-    const ctx = contextArgs.context;
+    const { ctx, ctxArgs, log } = (
+      await this.logCtx(args, OperationKeys.UPDATE, true)
+    ).for(this.updatePrefix);
+
     const ignoreHandlers = ctx.get("ignoreHandlers");
     const ignoreValidate = ctx.get("ignoreValidation");
+    log.silly(
+      `handlerSetting: ${ignoreHandlers}, validationSetting: ${ignoreValidate}`
+    );
     const pk = model[this.pk] as string;
     if (!pk)
       throw new InternalError(
@@ -155,7 +154,7 @@ export class CouchDBRepository<
     if (!ignoreHandlers)
       await enforceDBDecorators(
         this,
-        ctx,
+        ctx as any,
         model,
         OperationKeys.UPDATE,
         OperationKeys.ON,
@@ -163,17 +162,15 @@ export class CouchDBRepository<
       );
 
     if (!ignoreValidate) {
+      const propsToIgnore = ctx.get("ignoredValidationProperties") || [];
+      log.silly(`ignored validation properties: ${propsToIgnore}`);
       const errors = await Promise.resolve(
-        model.hasErrors(
-          oldModel,
-          ...Model.relations(this.class),
-          ...(contextArgs.context.get("ignoredValidationProperties") || [])
-        )
+        model.hasErrors(oldModel, ...propsToIgnore)
       );
       if (errors) throw new ValidationError(errors.toString());
     }
     if (oldMetadata) CouchDBAdapter.setMetadata(model, oldMetadata);
-    return [model, ...contextArgs.args, oldModel];
+    return [model, ...ctxArgs, oldModel];
   }
 
   /**
@@ -189,70 +186,67 @@ export class CouchDBRepository<
     models: M[],
     ...args: MaybeContextualArg<ContextOf<A>>
   ): Promise<[M[], ...args: any[], ContextOf<A>, M[] | undefined]> {
-    const contextArgs = await Context.args<M, ContextOf<A>>(
-      OperationKeys.UPDATE,
-      this.class,
-      args,
-      this.adapter,
-      this._overrides || {}
-    );
-    const context = contextArgs.context;
+    const { ctx, ctxArgs, log } = (
+      await this.logCtx(args, BulkCrudOperationKeys.UPDATE_ALL, true)
+    ).for(this.updateAllPrefix);
 
-    const ignoreHandlers = context.get("ignoreHandlers");
-    const ignoreValidate = context.get("ignoreValidation");
+    const ignoreHandlers = ctx.get("ignoreHandlers");
+    const ignoreValidate = ctx.get("ignoreValidation");
+    log.silly(
+      `handlerSetting: ${ignoreHandlers}, ignoredValidation: ${ignoreValidate}`
+    );
     const ids = models.map((m) => {
       const id = m[this.pk] as string;
       if (!id) throw new InternalError("missing id on update operation");
       return id;
     });
     let oldModels: M[] | undefined;
-    if (context.get("applyUpdateValidation")) {
-      oldModels = await this.readAll(ids as string[], context);
-      if (context.get("mergeForUpdate"))
-        models = models.map((m, i) => {
+    if (ctx.get("applyUpdateValidation")) {
+      oldModels = await this.readAll(ids as string[], ctx);
+      models = models.map((m, i) => {
+        if (ctx.get("mergeForUpdate"))
           m = Model.merge((oldModels as any)[i], m, this.class);
-          const oldMetadata = CouchDBAdapter.getMetadata((oldModels as any)[i]);
-          if (oldMetadata) CouchDBAdapter.setMetadata(m, oldMetadata);
-          return m;
-        });
+        const oldMetadata = CouchDBAdapter.getMetadata((oldModels as any)[i]);
+        if (oldMetadata) CouchDBAdapter.setMetadata(m, oldMetadata);
+        return m;
+      });
+    }
+    if (!ignoreHandlers)
+      await Promise.all(
+        models.map((m, i) =>
+          enforceDBDecorators<M, Repository<M, A>, any>(
+            this,
+            ctx,
+            m,
+            OperationKeys.UPDATE,
+            OperationKeys.ON,
+            oldModels ? oldModels[i] : undefined
+          )
+        )
+      );
 
-      if (!ignoreHandlers)
-        await Promise.all(
+    if (!ignoreValidate) {
+      const ignoredProps = ctx.get("ignoredValidationProperties") || [];
+      log.silly(`ignored validation properties: ${ignoredProps}`);
+      let modelsValidation: any;
+      if (!ctx.get("applyUpdateValidation")) {
+        modelsValidation = await Promise.resolve(
+          models.map((m) => m.hasErrors(...ignoredProps))
+        );
+      } else {
+        modelsValidation = await Promise.all(
           models.map((m, i) =>
-            enforceDBDecorators<M, Repository<M, A>, any>(
-              this,
-              contextArgs.context,
-              m,
-              OperationKeys.UPDATE,
-              OperationKeys.ON,
-              oldModels ? oldModels[i] : undefined
+            Promise.resolve(
+              m.hasErrors((oldModels as any)[i] as any, ...ignoredProps)
             )
           )
         );
-
-      if (!ignoreValidate) {
-        const ignoredProps = context.get("ignoredValidationProperties") || [];
-        let modelsValidation: any;
-        if (!context.get("applyUpdateValidation")) {
-          modelsValidation = await Promise.resolve(
-            models.map((m) => m.hasErrors(...ignoredProps))
-          );
-        } else {
-          modelsValidation = await Promise.all(
-            models.map((m, i) =>
-              Promise.resolve(
-                m.hasErrors((oldModels as any)[i] as any, ...ignoredProps)
-              )
-            )
-          );
-        }
-
-        const errorMessages = reduceErrorsToPrint(modelsValidation);
-
-        if (errorMessages) throw new ValidationError(errorMessages);
       }
-    }
 
-    return [models, ...contextArgs.args, oldModels];
+      const errorMessages = reduceErrorsToPrint(modelsValidation);
+
+      if (errorMessages) throw new ValidationError(errorMessages);
+    }
+    return [models, ...ctxArgs, oldModels];
   }
 }
