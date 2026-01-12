@@ -160,8 +160,6 @@ export class CouchDBPaginator<M extends Model> extends Paginator<
       statement.skip = (page - 1) * this.size;
     }
 
-    this.validatePage(page);
-
     if (page !== 1) {
       if (!this._bookmark)
         throw new PagingError("No bookmark. Did you start in the first page?");
