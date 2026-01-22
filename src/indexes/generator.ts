@@ -110,7 +110,7 @@ export function generateIndexes<M extends Model>(
 
         indexes[name] = {
           index: {
-            fields: [key, ...(compositions as []), CouchDBKeys.TABLE].reduce(
+            fields: [CouchDBKeys.TABLE, key, ...(compositions as [])].reduce(
               (accum: any[], el) => {
                 if (sort) {
                   const res: any = {};
