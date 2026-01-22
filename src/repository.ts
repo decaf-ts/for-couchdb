@@ -1,7 +1,8 @@
 import { MaybeContextualArg, Repository } from "@decaf-ts/core";
 import { Model } from "@decaf-ts/decorator-validation";
 import { Constructor } from "@decaf-ts/decoration";
-import { CouchDBAdapter } from "./adapter";
+import type { CouchDBAdapter } from "./adapter";
+import { getMetadata, setMetadata } from "./metadata";
 import { ContextOf } from "@decaf-ts/core";
 import {
   enforceDBDecorators,
@@ -26,8 +27,8 @@ export class CouchDBRepository<
   protected assignMetadata(target: M | M[], source?: M | M[]): M | M[] {
     const apply = (instance: M, carrier?: M) => {
       const metadataSource = carrier ?? instance;
-      const metadata = CouchDBAdapter.getMetadata(metadataSource);
-      if (metadata) CouchDBAdapter.setMetadata(instance, metadata);
+      const metadata = getMetadata(metadataSource);
+      if (metadata) setMetadata(instance, metadata);
       return instance;
     };
 
@@ -146,7 +147,7 @@ export class CouchDBRepository<
 
     if (ctx.get("applyUpdateValidation")) {
       oldModel = await this.read(pk as string);
-      oldMetadata = oldModel ? CouchDBAdapter.getMetadata(oldModel) : undefined;
+      oldMetadata = oldModel ? getMetadata(oldModel) : undefined;
 
       if (ctx.get("mergeForUpdate"))
         model = Model.merge(oldModel, model, this.class);
@@ -169,7 +170,7 @@ export class CouchDBRepository<
       );
       if (errors) throw new ValidationError(errors.toString());
     }
-    if (oldMetadata) CouchDBAdapter.setMetadata(model, oldMetadata);
+    if (oldMetadata) setMetadata(model, oldMetadata);
     return [model, ...ctxArgs, oldModel];
   }
 
@@ -206,8 +207,8 @@ export class CouchDBRepository<
       models = models.map((m, i) => {
         if (ctx.get("mergeForUpdate"))
           m = Model.merge((oldModels as any)[i], m, this.class);
-        const oldMetadata = CouchDBAdapter.getMetadata((oldModels as any)[i]);
-        if (oldMetadata) CouchDBAdapter.setMetadata(m, oldMetadata);
+        const oldMetadata = getMetadata((oldModels as any)[i]);
+        if (oldMetadata) setMetadata(m, oldMetadata);
         return m;
       });
     }

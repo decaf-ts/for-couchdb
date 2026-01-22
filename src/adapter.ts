@@ -24,6 +24,7 @@ import { Context } from "@decaf-ts/core";
 import { type Constructor } from "@decaf-ts/decoration";
 import { final } from "@decaf-ts/logging";
 import { CouchDBRepository } from "./repository";
+import { getMetadata, removeMetadata, setMetadata } from "./metadata";
 import { Repository } from "@decaf-ts/core";
 
 /**
@@ -160,7 +161,7 @@ export abstract class CouchDBAdapter<
     rev: string
   ): Record<string, any> {
     if (!rev) return model;
-    CouchDBAdapter.setMetadata(model as any, rev);
+    setMetadata(model as any, rev);
     return model;
   }
 
@@ -177,7 +178,7 @@ export abstract class CouchDBAdapter<
     revs: string[]
   ): Record<string, any>[] {
     models.forEach((m, i) => {
-      CouchDBAdapter.setMetadata(m as any, revs[i]);
+      setMetadata(m as any, revs[i]);
       return m;
     });
     return models;
@@ -542,12 +543,7 @@ export abstract class CouchDBAdapter<
    * @param {any} metadata - The metadata to attach to the model.
    */
   static setMetadata<M extends Model>(model: M, metadata: any) {
-    Object.defineProperty(model, PersistenceKeys.METADATA, {
-      enumerable: false,
-      configurable: true,
-      writable: true,
-      value: metadata,
-    });
+    setMetadata(model, metadata);
   }
 
   /**
@@ -558,11 +554,7 @@ export abstract class CouchDBAdapter<
    * @return {any} The metadata or undefined if not found.
    */
   static getMetadata<M extends Model>(model: M) {
-    const descriptor = Object.getOwnPropertyDescriptor(
-      model,
-      PersistenceKeys.METADATA
-    );
-    return descriptor ? descriptor.value : undefined;
+    return getMetadata(model);
   }
 
   /**
@@ -572,10 +564,6 @@ export abstract class CouchDBAdapter<
    * @param {M} model - The model instance.
    */
   static removeMetadata<M extends Model>(model: M) {
-    const descriptor = Object.getOwnPropertyDescriptor(
-      model,
-      PersistenceKeys.METADATA
-    );
-    if (descriptor) delete (model as any)[PersistenceKeys.METADATA];
+    removeMetadata(model);
   }
 }
