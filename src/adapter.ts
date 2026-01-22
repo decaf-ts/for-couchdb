@@ -5,6 +5,7 @@ import {
   Paginator,
   RawResult,
   ContextualArgs,
+  PreparedModel,
 } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
@@ -180,6 +181,47 @@ export abstract class CouchDBAdapter<
       return m;
     });
     return models;
+  }
+
+  override prepare<M extends Model>(
+    model: M,
+    ...args: ContextualArgs<C>
+  ): PreparedModel {
+    const { log } = this.logCtx(args, this.prepare);
+    const split = model.segregate();
+    const result = Object.entries(split.model).reduce(
+      (accum: Record<string, any>, [key, val]) => {
+        if (typeof val === "undefined") return accum;
+        const mappedProp: string = Model.columnName(
+          model.constructor as Constructor<M>,
+          key as keyof M
+        );
+        if (this.isReserved(mappedProp))
+          throw new InternalError(`Property name ${mappedProp} is reserved`);
+        val = val instanceof Date ? new Date(val) : val;
+        accum[mappedProp] = val;
+        return accum;
+      },
+      {}
+    );
+    if ((model as any)[PersistenceKeys.METADATA]) {
+      // TODO movo to couchdb
+      log.silly(
+        `Passing along persistence metadata for ${(model as any)[PersistenceKeys.METADATA]}`
+      );
+      Object.defineProperty(result, PersistenceKeys.METADATA, {
+        enumerable: false,
+        writable: true,
+        configurable: true,
+        value: (model as any)[PersistenceKeys.METADATA],
+      });
+    }
+
+    return {
+      record: result,
+      id: model[Model.pk(model.constructor as Constructor<M>)] as string,
+      transient: split.transient,
+    };
   }
 
   /**
