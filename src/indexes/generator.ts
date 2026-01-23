@@ -95,51 +95,94 @@ export function generateIndexes<M extends Model>(
   models.forEach((m) => {
     const ind: Record<string, IndexMetadata> = Model.indexes(m);
     Object.entries(ind).forEach(([key, value]) => {
-      const k = Object.keys(value)[0];
-      // eslint-disable-next-line prefer-const
-      let { directions, compositions } = (value as any)[k];
-      const tableName = Model.tableName(m);
-      compositions = compositions || [];
-
-      function generate(sort?: OrderDirection) {
-        const name = [
-          tableName,
-          key,
-          ...(compositions as []),
-          PersistenceKeys.INDEX,
-        ].join(DefaultSeparator);
-
-        indexes[name] = {
-          index: {
-            fields: [CouchDBKeys.TABLE, key, ...(compositions as [])].reduce(
-              (accum: any[], el) => {
-                if (sort) {
-                  const res: any = {};
-                  res[el] = sort;
-                  accum.push(res);
-                } else {
-                  accum.push(el);
-                }
-                return accum;
-              },
-              []
-            ),
-          },
-          name: name,
-          ddoc: name,
-          type: "json",
-        };
-        if (!sort) {
-          const tableFilter: Record<string, any> = {};
-          tableFilter[CouchDBKeys.TABLE] = {};
-          tableFilter[CouchDBKeys.TABLE][CouchDBOperator.EQUAL] = tableName;
-          indexes[name].index.partial_filter_selector = tableFilter;
+      const metadataEntries: [string, IndexMetadata][] = [];
+      Object.entries(value || {}).forEach(([, metadataValue]) => {
+        if (!metadataValue) return;
+        const candidate = metadataValue as IndexMetadata;
+        if (
+          candidate.directions !== undefined ||
+          candidate.compositions !== undefined
+        ) {
+          metadataEntries.push([key, candidate]);
+          return;
         }
-      }
+        if (
+          typeof metadataValue === "object" &&
+          !Array.isArray(metadataValue)
+        ) {
+          const nested = metadataValue as Record<string, IndexMetadata>;
+          Object.entries(nested).forEach(([field, meta]) => {
+            if (meta) metadataEntries.push([field, meta]);
+          });
+        }
+      });
 
-      generate();
-      if (directions)
-        (directions as unknown as OrderDirection[]).forEach((d) => generate(d));
+      metadataEntries.forEach(([fieldKey, meta]) => {
+        if (!meta) return;
+        // eslint-disable-next-line prefer-const
+        let { directions, compositions } = meta as any;
+        const tableName = Model.tableName(m);
+        compositions = compositions || [];
+        const fieldKeys = [fieldKey, ...(compositions as string[])];
+
+        const tableFilter: Record<string, any> = {
+          [CouchDBKeys.TABLE]: {
+            [CouchDBOperator.EQUAL]: tableName,
+          },
+        };
+
+        function generate(sort?: OrderDirection, suffix?: string) {
+          const name = [
+            tableName,
+            fieldKey,
+            ...(compositions as []),
+            ...(suffix ? [suffix] : []),
+            PersistenceKeys.INDEX,
+          ].join(DefaultSeparator);
+
+          const baseFields = [CouchDBKeys.TABLE, ...fieldKeys];
+          const fields = sort
+            ? [
+                {
+                  [CouchDBKeys.TABLE]: sort,
+                },
+                ...fieldKeys.map((sortField) => ({
+                  [sortField]: sort,
+                })),
+              ]
+            : baseFields;
+
+          indexes[name] = {
+            index: {
+              fields,
+            },
+            name,
+            ddoc: name,
+            type: "json",
+          };
+          if (!sort) {
+            indexes[name].index.partial_filter_selector = tableFilter;
+          }
+        }
+
+        generate();
+        const normalizedDirections = Array.from(
+          new Set(
+            (directions || [OrderDirection.ASC]).map(
+              (dir: OrderDirection | string) => String(dir).toLowerCase()
+            )
+          )
+        );
+
+        const validDirections = normalizedDirections.filter(
+          (dir): dir is OrderDirection =>
+            dir === OrderDirection.ASC || dir === OrderDirection.DSC
+        );
+
+        validDirections.forEach((direction) => {
+          generate(direction, direction);
+        });
+      });
     });
   });
 

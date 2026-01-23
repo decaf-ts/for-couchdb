@@ -174,20 +174,19 @@ export class CouchDBStatement<
       }
     }
 
-    if (this.orderBySelector) {
+    if (this.orderBySelectors?.length) {
       query.sort = query.sort || [];
       query.selector = query.selector || ({} as MangoSelector);
-      const [selector, value] = this.orderBySelector as [
-        string,
-        OrderDirection,
-      ];
-      const rec: any = {};
-      rec[selector] = value;
-      (query.sort as any[]).push(rec as any);
-      if (!query.selector[selector]) {
-        query.selector[selector] = {} as MangoSelector;
-        (query.selector[selector] as MangoSelector)[CouchDBOperator.BIGGER] =
-          null;
+      for (const [selectorKey, direction] of this.orderBySelectors) {
+        const selector = selectorKey as string;
+        const rec: Record<string, OrderDirection> = {};
+        rec[selector] = direction as OrderDirection;
+        (query.sort as Record<string, OrderDirection>[]).push(rec);
+        if (!query.selector[selector]) {
+          query.selector[selector] = {} as MangoSelector;
+          (query.selector[selector] as MangoSelector)[CouchDBOperator.BIGGER] =
+            null;
+        }
       }
     }
 
@@ -243,7 +242,6 @@ export class CouchDBStatement<
    */
   override async raw<R>(rawInput: MangoQuery, ...args: any[]): Promise<R> {
     const { ctx } = this.logCtx(args, this.raw);
-
     const results: any[] = await this.adapter.raw(rawInput, true, ctx);
 
     const pkAttr = Model.pk(this.fromSelector);

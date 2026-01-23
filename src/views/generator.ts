@@ -1,4 +1,10 @@
-import { Condition, GroupOperator, OrderDirection } from "@decaf-ts/core";
+import {
+  Condition,
+  GroupOperator,
+  OrderDirection,
+  ViewKey,
+  ViewKind,
+} from "@decaf-ts/core";
 import { DefaultSeparator } from "@decaf-ts/db-decorators";
 import { Metadata } from "@decaf-ts/decoration";
 import { Model } from "@decaf-ts/decorator-validation";
@@ -10,11 +16,9 @@ import { Operator } from "@decaf-ts/core";
 import {
   CouchDBDesignDoc,
   CouchDBViewDefinition,
+  CouchDBViewMetadata,
+  CouchDBViewOptions,
   ViewIndexDefinition,
-  ViewKey,
-  ViewKind,
-  ViewMetadata,
-  ViewOptions,
 } from "./types";
 
 function toJsLiteral(value: any): string {
@@ -73,7 +77,7 @@ function conditionToJs(condition: Condition<any>, docVar: string): string {
 }
 
 function buildAuthGuard(
-  auth?: ViewOptions["auth"],
+  auth?: CouchDBViewOptions["auth"],
   docVar = "doc"
 ): string | undefined {
   if (!auth) return undefined;
@@ -111,7 +115,10 @@ function buildEmitKey(
   return `[${keys.map((k) => `doc[${JSON.stringify(k)}]`).join(", ")}]`;
 }
 
-function buildEmitValue(value: ViewOptions["value"], attr: string): string {
+function buildEmitValue(
+  value: CouchDBViewOptions["value"],
+  attr: string
+): string {
   if (value === "doc") return "doc";
   if (!value) return `doc[${JSON.stringify(attr)}]`;
   if (Array.isArray(value))
@@ -140,7 +147,7 @@ function defaultReduce(kind: ViewKind): string | undefined {
 function buildMapFunction(
   tableName: string,
   attr: string,
-  meta: ViewMetadata
+  meta: CouchDBViewMetadata
 ): string {
   if (meta.map) {
     if (typeof meta.map === "function") return meta.map.toString();
@@ -180,7 +187,7 @@ function buildMapFunction(
 function normalizeViewMetadata(
   kind: ViewKind,
   attr: string,
-  meta: ViewMetadata,
+  meta: CouchDBViewMetadata,
   tableName: string
 ): CouchDBViewDefinition {
   const map = buildMapFunction(tableName, attr, meta);
@@ -196,7 +203,7 @@ function generateViewName(
   tableName: string,
   attr: string,
   kind: ViewKind,
-  meta: ViewMetadata,
+  meta: CouchDBViewMetadata,
   separator = DefaultSeparator
 ): string {
   if (meta.name) return meta.name;
@@ -216,18 +223,18 @@ function collectViewMetadata(
   model: Constructor<Model>,
   key: Operator,
   kind: ViewKind
-): ViewMetadata[] {
+): CouchDBViewMetadata[] {
   const meta = Metadata.get(model, key) || {};
   return Object.entries(meta as Record<string, any>).flatMap(
     ([attr, entries]) => {
       if (!entries || typeof entries !== "object") return [];
       return Object.values(entries as Record<string, any>).map((entry) => {
-        const value = entry as ViewMetadata;
+        const value = entry as CouchDBViewMetadata;
         return {
           ...value,
           kind,
           attribute: value.attribute || attr,
-        } as ViewMetadata;
+        } as CouchDBViewMetadata;
       });
     }
   );
@@ -324,7 +331,9 @@ export function generateViewIndexes<M extends Model>(
   return Object.values(indexes);
 }
 
-export function viewIndexDefinition(meta: ViewMetadata): ViewIndexDefinition {
+export function viewIndexDefinition(
+  meta: CouchDBViewMetadata
+): ViewIndexDefinition {
   const key = normalizeKey(meta.key, meta.attribute);
   return {
     attribute: key[0],

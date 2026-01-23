@@ -1,58 +1,12 @@
-import { Condition, Operator, PersistenceKeys } from "@decaf-ts/core";
-import { Decoration, Metadata, propMetadata } from "@decaf-ts/decoration";
-import { DefaultSeparator } from "@decaf-ts/db-decorators";
-import {
-  AggregateOptions,
-  ViewKind,
-  ViewMetadata,
-  ViewOptions,
-} from "./views/types";
-import { CouchDBKeys } from "./constants";
-
-function nextViewSlot(
-  target: any,
-  key: PersistenceKeys | Operator | string,
-  attr: string
-): string {
-  const existing = Metadata.get(target.constructor, key) || {};
-  const attrBucket = existing[attr] || {};
-  const next = Object.keys(attrBucket).length + 1;
-  return String(next);
-}
-
-function applyViewDecorator(
-  metaKey: PersistenceKeys | Operator | string,
-  kind: ViewKind,
-  opts?: ViewOptions
-) {
-  return function decorator(target: any, attr: any) {
-    const slot = opts?.name || nextViewSlot(target, metaKey, attr as string);
-    const key = Metadata.key(metaKey, attr as string, slot);
-    const value: ViewMetadata = {
-      ...(opts || {}),
-      kind,
-      attribute: attr as string,
-    };
-    return propMetadata(key, value)(target, attr);
-  };
-}
-
-export function view(opts?: ViewOptions) {
-  return Decoration.for(CouchDBKeys.VIEW)
-    .define({
-      decorator: function view(o?: ViewOptions) {
-        return applyViewDecorator(CouchDBKeys.VIEW, "view", o);
-      },
-      args: [opts],
-    })
-    .apply();
-}
+import { applyViewDecorator, Condition, Operator } from "@decaf-ts/core";
+import { Decoration } from "@decaf-ts/decoration";
+import { AggregateOptions, CouchDBViewOptions } from "./views/index";
 
 export function groupBy(
-  compositionsOrOptions?: string[] | string | ViewOptions,
-  nameOrOptions?: string | ViewOptions
+  compositionsOrOptions?: string[] | string | CouchDBViewOptions,
+  nameOrOptions?: string | CouchDBViewOptions
 ) {
-  let opts: ViewOptions = {};
+  let opts: CouchDBViewOptions = {};
   if (Array.isArray(compositionsOrOptions)) {
     opts.compositions = compositionsOrOptions;
   } else if (typeof compositionsOrOptions === "string") {
@@ -68,7 +22,7 @@ export function groupBy(
 
   return Decoration.for(Operator.GROUP_BY)
     .define({
-      decorator: function groupBy(o?: ViewOptions) {
+      decorator: function groupBy(o?: CouchDBViewOptions) {
         return applyViewDecorator(Operator.GROUP_BY, "groupBy", o);
       },
       args: [opts],
@@ -187,5 +141,3 @@ export function distinct(
     })
     .apply();
 }
-
-export { DefaultSeparator };
