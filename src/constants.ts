@@ -39,4 +39,7 @@ export const CouchDBKeys = {
   DDOC: "ddoc",
   NATIVE: "__native",
   INDEX: "index",
+
+  /** @description Key for CouchDB view metadata */
+  VIEW: "view",
 };

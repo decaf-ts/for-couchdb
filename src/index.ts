@@ -6,9 +6,11 @@ export * from "./adapter";
 export * from "./constants";
 export * from "./errors";
 export * from "./metadata";
+export * from "./decorators";
 export * from "./types";
 export * from "./utils";
 export * from "./query";
+export * from "./views";
 
 /**
  * @description CouchDB adapter for Decaf.ts

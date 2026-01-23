@@ -5,6 +5,7 @@ import { Model } from "@decaf-ts/decorator-validation";
 import { CouchDBOperator } from "../query/constants";
 import { CreateIndexRequest } from "../types";
 import { Constructor } from "@decaf-ts/decoration";
+import { generateViewIndexes } from "../views";
 
 /**
  * @description Generates a name for a CouchDB index
@@ -141,5 +142,11 @@ export function generateIndexes<M extends Model>(
         (directions as unknown as OrderDirection[]).forEach((d) => generate(d));
     });
   });
+
+  generateViewIndexes(models).forEach((index) => {
+    if (!index.name) return;
+    indexes[index.name] = index;
+  });
+
   return Object.values(indexes);
 }

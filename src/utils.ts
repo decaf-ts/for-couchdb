@@ -61,7 +61,7 @@ export function wrapDocumentScope(
   pass: string
 ): any {
   const db = con.use ? con.use(dbName) : con;
-  ["insert", "get", "put", "destroy", "find"].forEach((k) => {
+  ["insert", "get", "put", "destroy", "find", "view"].forEach((k) => {
     const original = (db as Record<string, any>)[k];
     Object.defineProperty(db, k, {
       enumerable: false,
