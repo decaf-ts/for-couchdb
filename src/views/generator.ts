@@ -289,6 +289,7 @@ export function generateViews<M extends Model>(
     const metas = viewKeys.flatMap(([key, kind]) =>
       collectViewMetadata(m, key, kind)
     );
+    console.log("generateViews", tableName, metas.length);
 
     metas.forEach((meta) => {
       const attr = meta.attribute;
