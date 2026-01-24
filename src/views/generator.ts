@@ -199,7 +199,7 @@ function normalizeViewMetadata(
   return { map, reduce };
 }
 
-function generateViewName(
+export function generateViewName(
   tableName: string,
   attr: string,
   kind: ViewKind,
@@ -211,7 +211,7 @@ function generateViewName(
   return parts.join(separator).replace(/\s+/g, "_");
 }
 
-function generateDesignDocName(
+export function generateDesignDocName(
   tableName: string,
   viewName: string,
   separator = DefaultSeparator
@@ -219,7 +219,36 @@ function generateDesignDocName(
   return [tableName, viewName, CouchDBKeys.DDOC].join(separator);
 }
 
-function collectViewMetadata(
+export function findViewMetadata<M extends Model>(
+  model: Constructor<M>,
+  kind: ViewKind,
+  attribute?: string
+): CouchDBViewMetadata[] {
+  const viewKeyMap: Record<ViewKind, Operator> = {
+    view: Operator.VIEW,
+    groupBy: Operator.GROUP_BY,
+    count: Operator.COUNT,
+    sum: Operator.SUM,
+    max: Operator.MAX,
+    min: Operator.MIN,
+    distinct: Operator.DISTINCT,
+  };
+  const key = viewKeyMap[kind];
+  if (!key) return [];
+  const meta = Metadata.get(model, key) || {};
+  return Object.entries(meta as Record<string, any>).flatMap(([attr, entries]) => {
+    if (!entries || typeof entries !== "object") return [];
+    return Object.values(entries as Record<string, any>)
+      .map((entry) => ({
+        ...(entry as CouchDBViewMetadata),
+        kind,
+        attribute: (entry as CouchDBViewMetadata).attribute || attr,
+      }))
+      .filter((entry) => !attribute || entry.attribute === attribute);
+  });
+}
+
+export function collectViewMetadata(
   model: Constructor<Model>,
   key: Operator,
   kind: ViewKind

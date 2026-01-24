@@ -1,12 +1,22 @@
 import {
+  Adapter,
   Condition,
+  ContextOf,
   GroupOperator,
   Operator,
   OrderDirection,
+  QueryError,
   Sequence,
+  SelectSelector,
   Statement,
+  ViewKind,
 } from "@decaf-ts/core";
-import { MangoOperator, MangoQuery, MangoSelector } from "../types";
+import {
+  MangoOperator,
+  MangoQuery,
+  MangoSelector,
+  ViewResponse,
+} from "../types";
 import { Model } from "@decaf-ts/decorator-validation";
 import { translateOperators } from "./translate";
 import { CouchDBKeys } from "../constants";
@@ -18,7 +28,33 @@ import {
 import { DBKeys } from "@decaf-ts/db-decorators";
 import type { Context } from "@decaf-ts/db-decorators";
 import { Metadata } from "@decaf-ts/decoration";
-import { Adapter } from "@decaf-ts/core";
+import {
+  generateDesignDocName,
+  generateViewName,
+  findViewMetadata,
+} from "../views/generator";
+import { CouchDBViewMetadata } from "../views/types";
+import { CouchDBAdapter } from "../adapter";
+
+type CouchDBViewDescriptor = {
+  ddoc: string;
+  view: string;
+  options: Record<string, any>;
+};
+
+type CouchDBAggregateInfo =
+  | {
+      kind: ViewKind;
+      meta: CouchDBViewMetadata;
+      descriptor: CouchDBViewDescriptor;
+      countDistinct?: boolean;
+    }
+  | {
+      kind: "avg";
+      attribute: string;
+      sumDescriptor: CouchDBViewDescriptor;
+      countDescriptor: CouchDBViewDescriptor;
+    };
 
 /**
  * @description Statement builder for CouchDB Mango queries
@@ -107,6 +143,8 @@ export class CouchDBStatement<
    */
   protected build(): MangoQuery {
     const log = this.log.for(this.build);
+    const aggregateQuery = this.buildAggregateQuery();
+    if (aggregateQuery) return aggregateQuery;
     const selectors: MangoSelector = {};
     selectors[CouchDBKeys.TABLE] = {};
     selectors[CouchDBKeys.TABLE] = Model.tableName(this.fromSelector);
@@ -242,6 +280,10 @@ export class CouchDBStatement<
    */
   override async raw<R>(rawInput: MangoQuery, ...args: any[]): Promise<R> {
     const { ctx } = this.logCtx(args, this.raw);
+    const aggregator = (rawInput as any)?.aggregateInfo;
+    if ((rawInput as any)?.aggregate && aggregator) {
+      return this.executeAggregate<R>(aggregator, ctx);
+    }
     const results: any[] = await this.adapter.raw(rawInput, true, ctx);
 
     const pkAttr = Model.pk(this.fromSelector);
@@ -290,6 +332,193 @@ export class CouchDBStatement<
    *
    *   Statement-->>Statement: Return query with selector
    */
+  private buildAggregateQuery(): MangoQuery | undefined {
+    if (!this.fromSelector) return undefined;
+    if (this.avgSelector) {
+      const attribute = String(this.avgSelector);
+      const sumInfo = this.createAggregateDescriptor("sum", attribute);
+      const countInfo = this.createAggregateDescriptor("count", attribute);
+      if (!sumInfo || !countInfo)
+        throw new QueryError(
+          `Avg operation requires sum and count views for attribute ${attribute}`
+        );
+      return this.createAggregateQuery({
+        kind: "avg",
+        attribute,
+        sumDescriptor: sumInfo.descriptor,
+        countDescriptor: countInfo.descriptor,
+      });
+    }
+
+    if (typeof this.countDistinctSelector !== "undefined") {
+      const attribute =
+        this.countDistinctSelector == null
+          ? undefined
+          : String(this.countDistinctSelector);
+      const info = this.createAggregateDescriptor("distinct", attribute);
+      if (info) {
+        info.countDistinct = true;
+        return this.createAggregateQuery(info);
+      }
+    }
+
+    const aggregatorUsed =
+      typeof this.countSelector !== "undefined" ||
+      typeof this.countDistinctSelector !== "undefined" ||
+      !!this.minSelector ||
+      !!this.maxSelector ||
+      !!this.sumSelector ||
+      !!this.distinctSelector;
+
+    const aggregatorChecks: Array<
+      [ViewKind, SelectSelector<M> | undefined]
+    > = [
+      ["count", (this.countSelector ?? undefined) as SelectSelector<M> | undefined],
+      ["max", this.maxSelector],
+      ["min", this.minSelector],
+      ["sum", this.sumSelector],
+      ["distinct", this.distinctSelector],
+    ];
+
+    for (const [kind, selector] of aggregatorChecks) {
+      const attribute = selector ? String(selector) : undefined;
+      const info = this.createAggregateDescriptor(kind, attribute);
+      if (info) return this.createAggregateQuery(info);
+    }
+
+    if (aggregatorUsed) {
+      throw new QueryError(
+        `No CouchDB view metadata found for table ${Model.tableName(
+          this.fromSelector
+        )} aggregator`
+      );
+    }
+    return undefined;
+  }
+
+  private createAggregateDescriptor(
+    kind: ViewKind,
+    attribute?: string
+  ): Extract<CouchDBAggregateInfo, { kind: ViewKind }> | undefined {
+    if (!this.fromSelector) return undefined;
+    const metas = findViewMetadata(this.fromSelector, kind, attribute);
+    if (!metas.length) return undefined;
+    const meta = metas[0];
+    const tableName = Model.tableName(this.fromSelector);
+    const viewName = generateViewName(tableName, meta.attribute, kind, meta);
+    const ddoc = meta.ddoc || generateDesignDocName(tableName, viewName);
+    const options: Record<string, any> = {
+      reduce: meta.reduce !== undefined ? true : !meta.returnDocs,
+    };
+    if (kind === "distinct" || kind === "groupBy") options.group = true;
+    return {
+      kind,
+      meta,
+      descriptor: {
+        ddoc,
+        view: viewName,
+        options,
+      },
+    };
+  }
+
+  private createAggregateQuery(
+    info: CouchDBAggregateInfo
+  ): MangoQuery & { aggregate: true; aggregateInfo: CouchDBAggregateInfo } {
+    return {
+      selector: {},
+      aggregate: true,
+      aggregateInfo: info,
+    } as MangoQuery & { aggregate: true; aggregateInfo: CouchDBAggregateInfo };
+  }
+
+  private async executeAggregate<R>(
+    info: CouchDBAggregateInfo,
+    ctx: ContextOf<A>
+  ): Promise<R> {
+    if (!this.isViewAggregate(info)) {
+      return this.handleAverage<R>(info, ctx);
+    }
+    const couchAdapter = this.getCouchAdapter();
+    const viewInfo = info as Extract<CouchDBAggregateInfo, { kind: ViewKind }>;
+    const response = await couchAdapter.view<ViewResponse>(
+      viewInfo.descriptor.ddoc,
+      viewInfo.descriptor.view,
+      viewInfo.descriptor.options,
+      ctx
+    );
+    return this.processViewResponse<R>(info, response);
+  }
+
+  private async handleAverage<R>(
+    info: CouchDBAggregateInfo,
+    ctx: ContextOf<A>
+  ): Promise<R> {
+    if (info.kind !== "avg")
+      throw new QueryError("Average descriptor is not valid");
+    const [sumDesc, countDesc] = [
+      info.sumDescriptor,
+      info.countDescriptor,
+    ];
+    const couchAdapter = this.getCouchAdapter();
+    const [sumResponse, countResponse] = await Promise.all([
+      couchAdapter.view<ViewResponse>(
+        sumDesc.ddoc,
+        sumDesc.view,
+        sumDesc.options,
+        ctx
+      ),
+      couchAdapter.view<ViewResponse>(
+        countDesc.ddoc,
+        countDesc.view,
+        countDesc.options,
+        ctx
+      ),
+    ]);
+    const sum = sumResponse.rows?.[0]?.value ?? 0;
+    const count = countResponse.rows?.[0]?.value ?? 0;
+    if (!count) return 0 as unknown as R;
+    return (sum / count) as unknown as R;
+  }
+
+  private processViewResponse<R>(
+    info: CouchDBAggregateInfo,
+    response: ViewResponse
+  ): R {
+    if (info.kind === "avg")
+      throw new QueryError(
+        "Average results should be handled before processing rows"
+      );
+    const rows = response.rows || [];
+    const viewInfo = info as Extract<CouchDBAggregateInfo, { kind: ViewKind }>;
+    const meta = viewInfo.meta;
+    if (viewInfo.countDistinct) {
+      return (rows.length || 0) as unknown as R;
+    }
+    if (viewInfo.kind === "distinct" || viewInfo.kind === "groupBy") {
+      return rows.map((row) => row.key ?? row.value) as unknown as R;
+    }
+    if (meta.returnDocs) {
+      return rows.map((row) => row.value ?? row.doc ?? row) as unknown as R;
+    }
+    if (!rows.length) {
+      return (
+        viewInfo.kind === "count" ? 0 : null
+      ) as unknown as R;
+    }
+    return (rows[0].value ?? rows[0].key ?? null) as unknown as R;
+  }
+
+  private isViewAggregate(
+    info: CouchDBAggregateInfo
+  ): info is Extract<CouchDBAggregateInfo, { kind: ViewKind }> {
+    return info.kind !== "avg";
+  }
+
+  private getCouchAdapter(): CouchDBAdapter<any, any, any> {
+    return this.adapter as unknown as CouchDBAdapter<any, any, any>;
+  }
+
   protected parseCondition(condition: Condition<M>): MangoQuery {
     /**
      * @description Merges two selectors with a logical operator
@@ -314,6 +543,22 @@ export class CouchDBStatement<
       operator: Operator | GroupOperator;
       comparison: any;
     };
+
+    if (operator === Operator.BETWEEN) {
+      const attr = attr1 as string;
+      if (!Array.isArray(comparison) || comparison.length !== 2)
+        throw new QueryError("BETWEEN operator requires [min, max] comparison");
+      const [min, max] = comparison;
+      const opBetween: MangoSelector = {} as MangoSelector;
+      opBetween[attr] = {} as MangoSelector;
+      (opBetween[attr] as MangoSelector)[
+        translateOperators(Operator.BIGGER_EQ)
+      ] = min;
+      (opBetween[attr] as MangoSelector)[
+        translateOperators(Operator.SMALLER_EQ)
+      ] = max;
+      return { selector: opBetween };
+    }
 
     let op: MangoSelector = {} as MangoSelector;
     if (

@@ -18,7 +18,7 @@ import {
 } from "@decaf-ts/db-decorators";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
-import { type MangoQuery } from "./types";
+import { type MangoQuery, ViewResponse } from "./types";
 import { CouchDBPaginator, CouchDBStatement } from "./query";
 import { Context } from "@decaf-ts/core";
 import { type Constructor } from "@decaf-ts/decoration";
@@ -147,6 +147,23 @@ export abstract class CouchDBAdapter<
     docsOnly: D,
     ...args: ContextualArgs<C>
   ): Promise<RawResult<R, D>>;
+
+  /**
+   * @description Executes a CouchDB view query
+   * @summary Invokes a design document view and returns its response
+   * @template R - The view response type
+   * @param {string} ddoc - Design document name
+   * @param {string} view - View name
+   * @param {Record<string, any>} options - Mango query options
+   * @param {...ContextualArgs<C>} args - Optional contextual arguments
+   * @return {Promise<ViewResponse<R>>} The view response
+   */
+  abstract view<R>(
+    ddoc: string,
+    view: string,
+    options: Record<string, any>,
+    ...args: ContextualArgs<C>
+  ): Promise<ViewResponse<R>>;
 
   /**
    * @description Assigns metadata to a model

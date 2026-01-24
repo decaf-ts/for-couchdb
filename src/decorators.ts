@@ -19,6 +19,9 @@ export function groupBy(
   } else if (nameOrOptions) {
     opts = Object.assign({}, opts, nameOrOptions);
   }
+  if (typeof opts.returnDocs === "undefined") {
+    opts.returnDocs = true;
+  }
 
   return Decoration.for(Operator.GROUP_BY)
     .define({

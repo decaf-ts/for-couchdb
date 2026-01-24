@@ -204,3 +204,16 @@ export interface MangoQuery {
    * Optional, default: false. */
   execution_stats?: boolean;
 }
+
+export interface ViewRow<D = any> {
+  id?: string;
+  key?: any;
+  value?: any;
+  doc?: D;
+}
+
+export interface ViewResponse<D = any> {
+  total_rows?: number;
+  offset?: number;
+  rows: ViewRow<D>[];
+}
