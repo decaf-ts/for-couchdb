@@ -9,6 +9,7 @@ import {
   Sequence,
   SelectSelector,
   Statement,
+  UnsupportedError,
   ViewKind,
 } from "@decaf-ts/core";
 import {
@@ -81,6 +82,9 @@ export class CouchDBStatement<
   A extends Adapter<any, any, MangoQuery, any>,
   R,
 > extends Statement<M, A, R, MangoQuery> {
+  private manualAggregation?: CouchDBAggregateInfo;
+  private attributeTypeCache: Map<string, string | undefined> = new Map();
+
   constructor(adapter: A) {
     super(adapter);
   }
@@ -143,8 +147,15 @@ export class CouchDBStatement<
    */
   protected build(): MangoQuery {
     const log = this.log.for(this.build);
-    const aggregateQuery = this.buildAggregateQuery();
-    if (aggregateQuery) return aggregateQuery;
+    this.manualAggregation = undefined;
+    const aggregateInfo = this.buildAggregateInfo();
+    if (aggregateInfo) {
+      if (this.shouldUseManualAggregation()) {
+        this.manualAggregation = aggregateInfo;
+      } else {
+        return this.createAggregateQuery(aggregateInfo);
+      }
+    }
     const selectors: MangoSelector = {};
     selectors[CouchDBKeys.TABLE] = {};
     selectors[CouchDBKeys.TABLE] = Model.tableName(this.fromSelector);
@@ -228,9 +239,10 @@ export class CouchDBStatement<
       }
     }
 
+    const hasManualAggregate = !!this.manualAggregation;
     if (this.limitSelector) {
       query.limit = this.limitSelector;
-    } else {
+    } else if (!hasManualAggregate) {
       log.warn(
         `No limit selector defined. Using default couchdb limit of ${CouchDBQueryLimit}`
       );
@@ -291,9 +303,24 @@ export class CouchDBStatement<
       this.fromSelector,
       Metadata.key(DBKeys.ID, pkAttr as string)
     )?.type;
+    const processed = results.map((r) =>
+      this.processRecord(r, pkAttr, type, ctx)
+    );
+    if (this.manualAggregation) {
+      const manualResult = this.executeManualAggregation<R>(
+        processed,
+        this.manualAggregation,
+        ctx
+      );
+      this.manualAggregation = undefined;
+      return manualResult;
+    }
 
-    if (!this.selectSelector)
-      return results.map((r) => this.processRecord(r, pkAttr, type, ctx)) as R;
+    if (!this.selectSelector && this.groupBySelectors?.length) {
+      return this.groupSelectResults(processed) as R;
+    }
+
+    if (!this.selectSelector) return processed as R;
     return results as R;
   }
 
@@ -332,67 +359,68 @@ export class CouchDBStatement<
    *
    *   Statement-->>Statement: Return query with selector
    */
-  private buildAggregateQuery(): MangoQuery | undefined {
+  private buildAggregateInfo(): CouchDBAggregateInfo | undefined {
     if (!this.fromSelector) return undefined;
+
     if (this.avgSelector) {
       const attribute = String(this.avgSelector);
       const sumInfo = this.createAggregateDescriptor("sum", attribute);
+      if (!sumInfo) throw this.missingDecorator("sum", attribute);
       const countInfo = this.createAggregateDescriptor("count", attribute);
-      if (!sumInfo || !countInfo)
-        throw new QueryError(
-          `Avg operation requires sum and count views for attribute ${attribute}`
-        );
-      return this.createAggregateQuery({
+      if (!countInfo) throw this.missingDecorator("count", attribute);
+      return {
         kind: "avg",
         attribute,
         sumDescriptor: sumInfo.descriptor,
         countDescriptor: countInfo.descriptor,
-      });
+      };
     }
 
     if (typeof this.countDistinctSelector !== "undefined") {
-      const attribute =
-        this.countDistinctSelector == null
-          ? undefined
-          : String(this.countDistinctSelector);
-      const info = this.createAggregateDescriptor("distinct", attribute);
-      if (info) {
-        info.countDistinct = true;
-        return this.createAggregateQuery(info);
-      }
-    }
-
-    const aggregatorUsed =
-      typeof this.countSelector !== "undefined" ||
-      typeof this.countDistinctSelector !== "undefined" ||
-      !!this.minSelector ||
-      !!this.maxSelector ||
-      !!this.sumSelector ||
-      !!this.distinctSelector;
-
-    const aggregatorChecks: Array<
-      [ViewKind, SelectSelector<M> | undefined]
-    > = [
-      ["count", (this.countSelector ?? undefined) as SelectSelector<M> | undefined],
-      ["max", this.maxSelector],
-      ["min", this.minSelector],
-      ["sum", this.sumSelector],
-      ["distinct", this.distinctSelector],
-    ];
-
-    for (const [kind, selector] of aggregatorChecks) {
-      const attribute = selector ? String(selector) : undefined;
-      const info = this.createAggregateDescriptor(kind, attribute);
-      if (info) return this.createAggregateQuery(info);
-    }
-
-    if (aggregatorUsed) {
-      throw new QueryError(
-        `No CouchDB view metadata found for table ${Model.tableName(
-          this.fromSelector
-        )} aggregator`
+      const attribute = this.resolveSelectorAttribute(
+        this.countDistinctSelector
       );
+      const info = this.createAggregateDescriptor("distinct", attribute);
+      if (!info) throw this.missingDecorator("distinct", attribute);
+      info.countDistinct = true;
+      return info;
     }
+
+    if (typeof this.countSelector !== "undefined") {
+      const attribute = this.resolveSelectorAttribute(this.countSelector);
+      const info = this.createAggregateDescriptor("count", attribute);
+      if (!info) throw this.missingDecorator("count", attribute);
+      return info;
+    }
+
+    if (this.maxSelector) {
+      const attribute = this.resolveSelectorAttribute(this.maxSelector);
+      const info = this.createAggregateDescriptor("max", attribute);
+      if (!info) throw this.missingDecorator("max", attribute);
+      return info;
+    }
+
+    if (this.minSelector) {
+      const attribute = this.resolveSelectorAttribute(this.minSelector);
+      const info = this.createAggregateDescriptor("min", attribute);
+      if (!info) throw this.missingDecorator("min", attribute);
+      return info;
+    }
+
+    if (this.sumSelector) {
+      const attribute = this.resolveSelectorAttribute(this.sumSelector);
+      const info = this.createAggregateDescriptor("sum", attribute);
+      if (!info) throw this.missingDecorator("sum", attribute);
+      return info;
+    }
+
+    if (this.distinctSelector) {
+      const attribute = this.resolveSelectorAttribute(this.distinctSelector);
+      const info = this.createAggregateDescriptor("distinct", attribute);
+      if (!info) throw this.missingDecorator("distinct", attribute);
+      return info;
+    }
+
     return undefined;
   }
 
@@ -432,6 +460,10 @@ export class CouchDBStatement<
     } as MangoQuery & { aggregate: true; aggregateInfo: CouchDBAggregateInfo };
   }
 
+  private shouldUseManualAggregation(): boolean {
+    return !!this.whereCondition;
+  }
+
   private async executeAggregate<R>(
     info: CouchDBAggregateInfo,
     ctx: ContextOf<A>
@@ -456,10 +488,7 @@ export class CouchDBStatement<
   ): Promise<R> {
     if (info.kind !== "avg")
       throw new QueryError("Average descriptor is not valid");
-    const [sumDesc, countDesc] = [
-      info.sumDescriptor,
-      info.countDescriptor,
-    ];
+    const [sumDesc, countDesc] = [info.sumDescriptor, info.countDescriptor];
     const couchAdapter = this.getCouchAdapter();
     const [sumResponse, countResponse] = await Promise.all([
       couchAdapter.view<ViewResponse>(
@@ -481,6 +510,283 @@ export class CouchDBStatement<
     return (sum / count) as unknown as R;
   }
 
+  private executeManualAggregation<R>(
+    docs: any[],
+    info: CouchDBAggregateInfo,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ctx: ContextOf<A>
+  ): R {
+    if (!this.fromSelector)
+      throw new QueryError("Manual aggregation requires a target model");
+    if (info.kind === "avg") {
+      return this.computeAverage<R>(docs, info.attribute) as R;
+    }
+
+    if (info.kind === "groupBy") {
+      return this.computeGroupBy<R>(docs, info.meta.attribute) as R;
+    }
+
+    const attribute = info.meta.attribute;
+    switch (info.kind) {
+      case "count": {
+        if (info.countDistinct) {
+          return this.computeDistinctCount<R>(docs, attribute) as R;
+        }
+        return this.computeCount<R>(docs, attribute) as R;
+      }
+      case "distinct":
+        if (info.countDistinct) {
+          return this.computeDistinctCount<R>(docs, attribute) as R;
+        }
+        return this.computeDistinctValues<R>(docs, attribute) as R;
+      case "sum":
+        return this.computeSum<R>(docs, attribute) as R;
+      case "min":
+        return this.computeMinMax<R>(docs, attribute, "min") as R;
+      case "max":
+        return this.computeMinMax<R>(docs, attribute, "max") as R;
+      default:
+        throw new QueryError(`Unsupported manual aggregation ${info.kind}`);
+    }
+  }
+
+  private computeCount<R>(docs: any[], attribute?: string): R {
+    if (!attribute) return docs.length as unknown as R;
+    const values = this.collectValues(docs, attribute);
+    return values.filter((value) => value !== undefined && value !== null)
+      .length as R;
+  }
+
+  private computeDistinctCount<R>(docs: any[], attribute?: string): R {
+    const values = attribute
+      ? this.collectValues(docs, attribute).filter(
+          (value) => value !== undefined && value !== null
+        )
+      : docs;
+    const seen = new Set<string>();
+    values.forEach((value) => seen.add(JSON.stringify(value)));
+    return seen.size as unknown as R;
+  }
+
+  private computeDistinctValues<R>(docs: any[], attribute?: string): R {
+    if (!attribute) return [] as unknown as R;
+    const values = this.collectValues(docs, attribute);
+    const seen = new Set<string>();
+    const unique: any[] = [];
+    values.forEach((value) => {
+      const key = JSON.stringify(value);
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(value);
+      }
+    });
+    return unique as unknown as R;
+  }
+
+  private computeSum<R>(docs: any[], attribute?: string): R {
+    if (!attribute) return docs.length as unknown as R;
+    const values = this.collectValues(docs, attribute).filter(
+      (value) => value !== undefined && value !== null
+    );
+    const sum = values.reduce(
+      (acc, value) =>
+        acc + this.toNumericValue(value, attribute, "SUM operation"),
+      0
+    );
+    return sum as unknown as R;
+  }
+
+  private computeAverage<R>(docs: any[], attribute?: string): R {
+    if (!attribute) return 0 as unknown as R;
+    const values = this.collectValues(docs, attribute).filter(
+      (value) => value !== undefined && value !== null
+    );
+    if (!values.length) return 0 as unknown as R;
+    const sum = values.reduce(
+      (acc, value) =>
+        acc + this.toNumericValue(value, attribute, "AVG operation"),
+      0
+    );
+    return (sum / values.length) as unknown as R;
+  }
+
+  private computeMinMax<R>(
+    docs: any[],
+    attribute: string | undefined,
+    mode: "min" | "max"
+  ): R {
+    if (!attribute) return null as unknown as R;
+    const values = this.collectValues(docs, attribute).filter(
+      (value) => value !== undefined && value !== null
+    );
+    let currentValue: any = null;
+    let currentComparable: number | null = null;
+    for (const value of values) {
+      const normalized = this.normalizeComparable(value);
+      if (normalized === null) continue;
+      if (currentComparable === null) {
+        currentComparable = normalized;
+        currentValue = value;
+        continue;
+      }
+      if (
+        (mode === "min" && normalized < currentComparable) ||
+        (mode === "max" && normalized > currentComparable)
+      ) {
+        currentComparable = normalized;
+        currentValue = value;
+      }
+    }
+    return currentValue as unknown as R;
+  }
+
+  private computeGroupBy<R>(docs: any[], attribute: string): R {
+    const grouped: Record<string, any[]> = {};
+    const values = this.collectValues(docs, attribute);
+    docs.forEach((doc, index) => {
+      const key = this.groupKey(values[index]);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(doc);
+    });
+    return grouped as unknown as R;
+  }
+
+  private groupSelectResults(docs: any[]): Record<string, any[]> {
+    if (!this.groupBySelectors?.length) return {};
+    const attribute = this.resolveSelectorAttribute(this.groupBySelectors[0]);
+    if (!attribute) return {};
+    const grouped: Record<string, any[]> = {};
+    docs.forEach((doc) => {
+      const key = this.groupKey(
+        this.convertValueByAttribute(attribute, doc[attribute])
+      );
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(doc);
+    });
+    return grouped;
+  }
+
+  private collectValues(docs: any[], attribute: string): any[] {
+    return docs.map((doc) => {
+      if (!doc || typeof doc !== "object") return undefined;
+      return this.convertValueByAttribute(attribute, doc[attribute]);
+    });
+  }
+
+  private convertValueByAttribute(attribute: string, value: any): any {
+    if (!this.fromSelector) return value;
+    const attributeType = this.getAttributeType(attribute);
+    if (attributeType === "date") {
+      if (value instanceof Date) return value;
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    if (typeof value === "string" && attribute.toLowerCase().includes("date")) {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    return value;
+  }
+
+  private getAttributeType(attribute?: string): string | undefined {
+    if (!attribute || !this.fromSelector) return undefined;
+    if (this.attributeTypeCache.has(attribute)) {
+      return this.attributeTypeCache.get(attribute);
+    }
+    const metaType =
+      Metadata.type(this.fromSelector, attribute as any) ??
+      (Metadata as any).getPropDesignTypes?.(this.fromSelector, attribute)
+        ?.designType;
+    const normalized = this.normalizeMetaType(metaType);
+    this.attributeTypeCache.set(attribute, normalized);
+    return normalized;
+  }
+
+  private normalizeMetaType(metaType: any): string | undefined {
+    if (!metaType) return undefined;
+    if (typeof metaType === "string") return metaType.toLowerCase();
+    if (typeof metaType === "function" && metaType.name)
+      return metaType.name.toLowerCase();
+    return undefined;
+  }
+
+  private normalizeComparable(value: any): number | null {
+    if (typeof value === "number") return value;
+    if (typeof value === "bigint") return Number(value);
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "string" && !isNaN(Number(value)))
+      return Number(value);
+    return null;
+  }
+
+  private groupKey(value: any): string {
+    if (value === undefined) return "undefined";
+    if (value === null) return "null";
+    if (typeof value === "symbol") return value.toString();
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    }
+    return String(value);
+  }
+
+  private toNumericValue(value: any, field: string, context: string): number {
+    if (typeof value === "number") return value;
+    if (typeof value === "bigint") return Number(value);
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "string" && !isNaN(Number(value)))
+      return Number(value);
+    throw new QueryError(
+      `${context} on "${field}" requires numeric values, but got ${typeof value}`
+    );
+  }
+
+  private convertAggregateValue(
+    attribute: string | undefined,
+    value: any
+  ): any {
+    if (!attribute) return value;
+    return this.convertValueByAttribute(attribute, value);
+  }
+
+  private resolveSelectorAttribute(
+    selector?: SelectSelector<M> | null
+  ): string | undefined {
+    if (selector == null) return undefined;
+    return String(selector);
+  }
+
+  private missingDecorator(
+    kind: ViewKind | "avg",
+    attribute?: string
+  ): UnsupportedError {
+    const decorator = this.decoratorForKind(kind);
+    const table = this.fromSelector
+      ? Model.tableName(this.fromSelector)
+      : "<unknown table>";
+    const attributeDesc = attribute ? ` on "${attribute}"` : "";
+    return new UnsupportedError(
+      `${decorator} decorator is required for CouchDB ${kind} aggregation${attributeDesc} on table "${table}".`
+    );
+  }
+
+  private decoratorForKind(kind: ViewKind | "avg"): string {
+    const map: Record<string, string> = {
+      count: "@count",
+      sum: "@sum",
+      min: "@min",
+      max: "@max",
+      distinct: "@distinct",
+      groupBy: "@groupBy",
+      view: "@view",
+      avg: "@avg",
+    };
+    return map[kind] || `@${kind}`;
+  }
+
   private processViewResponse<R>(
     info: CouchDBAggregateInfo,
     response: ViewResponse
@@ -496,17 +802,23 @@ export class CouchDBStatement<
       return (rows.length || 0) as unknown as R;
     }
     if (viewInfo.kind === "distinct" || viewInfo.kind === "groupBy") {
-      return rows.map((row) => row.key ?? row.value) as unknown as R;
+      return rows.map((row) =>
+        this.convertAggregateValue(
+          viewInfo.meta.attribute,
+          row.key ?? row.value
+        )
+      ) as unknown as R;
     }
     if (meta.returnDocs) {
       return rows.map((row) => row.value ?? row.doc ?? row) as unknown as R;
     }
     if (!rows.length) {
-      return (
-        viewInfo.kind === "count" ? 0 : null
-      ) as unknown as R;
+      return (viewInfo.kind === "count" ? 0 : null) as unknown as R;
     }
-    return (rows[0].value ?? rows[0].key ?? null) as unknown as R;
+    return this.convertAggregateValue(
+      viewInfo.meta.attribute,
+      rows[0].value ?? rows[0].key ?? null
+    ) as unknown as R;
   }
 
   private isViewAggregate(
