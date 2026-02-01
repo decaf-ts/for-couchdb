@@ -54,8 +54,32 @@ type CouchDBAggregateInfo =
       kind: "avg";
       attribute: string;
       sumDescriptor: CouchDBViewDescriptor;
-      countDescriptor: CouchDBViewDescriptor;
-    };
+    countDescriptor: CouchDBViewDescriptor;
+  };
+
+const escapeRegExp = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function nextLexicographicString(value: string): string {
+  if (!value) return "\u0000";
+  const chars = Array.from(value);
+  for (let i = chars.length - 1; i >= 0; i -= 1) {
+    const code = chars[i].codePointAt(0);
+    if (code === undefined) continue;
+    if (code < 0x10ffff) {
+      chars[i] = String.fromCodePoint(code + 1);
+      return chars.slice(0, i + 1).join("");
+    }
+  }
+  return `${value}\u0000`;
+}
+
+function prefixRange(prefix: string) {
+  return {
+    start: prefix,
+    end: nextLexicographicString(prefix),
+  };
+}
 
 /**
  * @description Statement builder for CouchDB Mango queries
@@ -855,6 +879,36 @@ export class CouchDBStatement<
       operator: Operator | GroupOperator;
       comparison: any;
     };
+
+    if (operator === Operator.STARTS_WITH) {
+      if (typeof attr1 !== "string")
+        throw new QueryError("STARTS_WITH requires an attribute name");
+      if (typeof comparison !== "string")
+        throw new QueryError("STARTS_WITH requires a string comparison");
+      const range = prefixRange(comparison);
+      return {
+        selector: {
+          [attr1]: {
+            [CouchDBOperator.BIGGER_EQ]: range.start,
+            [CouchDBOperator.SMALLER]: range.end,
+          },
+        },
+      };
+    }
+
+    if (operator === Operator.ENDS_WITH) {
+      if (typeof attr1 !== "string")
+        throw new QueryError("ENDS_WITH requires an attribute name");
+      if (typeof comparison !== "string")
+        throw new QueryError("ENDS_WITH requires a string comparison");
+      return {
+        selector: {
+          [attr1]: {
+            [CouchDBOperator.REGEXP]: `${escapeRegExp(comparison)}$`,
+          },
+        },
+      };
+    }
 
     if (operator === Operator.BETWEEN) {
       const attr = attr1 as string;

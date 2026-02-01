@@ -40,7 +40,10 @@ describe("generateIndexes", () => {
         (
           fields
         ): fields is Record<string, OrderDirection>[] =>
-          Array.isArray(fields) && typeof fields[0] === "object"
+          Array.isArray(fields) &&
+          typeof fields[0] === "object" &&
+          typeof fields[1] === "object" &&
+          "primary" in (fields[1] as Record<string, OrderDirection>)
       );
 
     const sortedFieldsWithoutTable = sortedFields.map((fields) =>
@@ -65,5 +68,34 @@ describe("generateIndexes", () => {
         expect.arrayContaining([combo])
       );
     });
+  });
+
+  it("indexes default query attributes", () => {
+    class DefaultAttrModel extends BaseModel {}
+
+    jest.spyOn(Model, "indexes").mockReturnValue({} as any);
+    jest
+      .spyOn(Model, "defaultQueryAttributes")
+      .mockReturnValue(["defaultAttr"] as any);
+    jest.spyOn(Model, "tableName").mockReturnValue("default_attr_model");
+
+    const indexes = generateIndexes([DefaultAttrModel]);
+
+    const defaultIndex = indexes.find(
+      (idx) =>
+        idx.name?.includes("default_attr_model") &&
+        Array.isArray(idx.index.fields) &&
+        (idx.index.fields as any[])[1] === "defaultAttr"
+    );
+    expect(defaultIndex).toBeDefined();
+    const sortedDefaultIndexes = indexes.filter(
+      (idx) =>
+        Array.isArray(idx.index.fields) &&
+        typeof (idx.index.fields as any[])[1] === "object" &&
+        (idx.index.fields as any[])[1]["defaultAttr"] !== undefined
+    );
+    expect(sortedDefaultIndexes.length).toBe(2);
+
+    jest.restoreAllMocks();
   });
 });

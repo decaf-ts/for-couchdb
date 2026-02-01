@@ -93,6 +93,58 @@ export function generateIndexes<M extends Model>(
   };
 
   models.forEach((m) => {
+    const modelTableName = Model.tableName(m);
+    let defaultQueryAttrs: string[] = [];
+    try {
+      defaultQueryAttrs = Model.defaultQueryAttributes(m);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err) {
+      defaultQueryAttrs = [];
+    }
+    defaultQueryAttrs.forEach((attr) => {
+      const baseName = generateIndexName([
+        modelTableName,
+        attr,
+        "defaultQuery",
+      ]);
+      const defaultFilter: Record<string, any> = {
+        [CouchDBKeys.TABLE]: {
+          [CouchDBOperator.EQUAL]: modelTableName,
+        },
+      };
+      indexes[baseName] = {
+        index: {
+          fields: [CouchDBKeys.TABLE, attr],
+        },
+        name: baseName,
+        ddoc: baseName,
+        type: "json",
+      };
+      indexes[baseName].index.partial_filter_selector = defaultFilter;
+
+      [OrderDirection.ASC, OrderDirection.DSC].forEach((direction) => {
+        const sortedName = generateIndexName(
+          [modelTableName, attr, "defaultQuery"],
+          direction
+        );
+        indexes[sortedName] = {
+          index: {
+            fields: [
+              {
+                [CouchDBKeys.TABLE]: direction,
+              },
+              {
+                [attr]: direction,
+              },
+            ],
+          },
+          name: sortedName,
+          ddoc: sortedName,
+          type: "json",
+        };
+      });
+    });
+
     const ind: Record<string, IndexMetadata> = Model.indexes(m);
     Object.entries(ind).forEach(([key, value]) => {
       const metadataEntries: [string, IndexMetadata][] = [];
@@ -121,7 +173,7 @@ export function generateIndexes<M extends Model>(
         if (!meta) return;
         // eslint-disable-next-line prefer-const
         let { directions, compositions } = meta as any;
-        const tableName = Model.tableName(m);
+        const tableName = modelTableName;
         compositions = compositions || [];
         const fieldKeys = [fieldKey, ...(compositions as string[])];
 
