@@ -54,8 +54,8 @@ type CouchDBAggregateInfo =
       kind: "avg";
       attribute: string;
       sumDescriptor: CouchDBViewDescriptor;
-    countDescriptor: CouchDBViewDescriptor;
-  };
+      countDescriptor: CouchDBViewDescriptor;
+    };
 
 const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -106,8 +106,8 @@ export class CouchDBStatement<
   A extends Adapter<any, any, MangoQuery, any>,
   R,
 > extends Statement<M, A, R, MangoQuery> {
-  private manualAggregation?: CouchDBAggregateInfo;
-  private attributeTypeCache: Map<string, string | undefined> = new Map();
+  protected manualAggregation?: CouchDBAggregateInfo;
+  protected attributeTypeCache: Map<string, string | undefined> = new Map();
 
   constructor(adapter: A) {
     super(adapter);
@@ -383,7 +383,7 @@ export class CouchDBStatement<
    *
    *   Statement-->>Statement: Return query with selector
    */
-  private buildAggregateInfo(): CouchDBAggregateInfo | undefined {
+  protected buildAggregateInfo(): CouchDBAggregateInfo | undefined {
     if (!this.fromSelector) return undefined;
 
     if (this.avgSelector) {
@@ -448,7 +448,7 @@ export class CouchDBStatement<
     return undefined;
   }
 
-  private createAggregateDescriptor(
+  protected createAggregateDescriptor(
     kind: ViewKind,
     attribute?: string
   ): Extract<CouchDBAggregateInfo, { kind: ViewKind }> | undefined {
@@ -474,7 +474,7 @@ export class CouchDBStatement<
     };
   }
 
-  private createAggregateQuery(
+  protected createAggregateQuery(
     info: CouchDBAggregateInfo
   ): MangoQuery & { aggregate: true; aggregateInfo: CouchDBAggregateInfo } {
     return {
@@ -484,11 +484,11 @@ export class CouchDBStatement<
     } as MangoQuery & { aggregate: true; aggregateInfo: CouchDBAggregateInfo };
   }
 
-  private shouldUseManualAggregation(): boolean {
+  protected shouldUseManualAggregation(): boolean {
     return !!this.whereCondition;
   }
 
-  private async executeAggregate<R>(
+  protected async executeAggregate<R>(
     info: CouchDBAggregateInfo,
     ctx: ContextOf<A>
   ): Promise<R> {
@@ -506,7 +506,7 @@ export class CouchDBStatement<
     return this.processViewResponse<R>(info, response);
   }
 
-  private async handleAverage<R>(
+  protected async handleAverage<R>(
     info: CouchDBAggregateInfo,
     ctx: ContextOf<A>
   ): Promise<R> {
@@ -534,7 +534,7 @@ export class CouchDBStatement<
     return (sum / count) as unknown as R;
   }
 
-  private executeManualAggregation<R>(
+  protected executeManualAggregation<R>(
     docs: any[],
     info: CouchDBAggregateInfo,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -574,14 +574,14 @@ export class CouchDBStatement<
     }
   }
 
-  private computeCount<R>(docs: any[], attribute?: string): R {
+  protected computeCount<R>(docs: any[], attribute?: string): R {
     if (!attribute) return docs.length as unknown as R;
     const values = this.collectValues(docs, attribute);
     return values.filter((value) => value !== undefined && value !== null)
       .length as R;
   }
 
-  private computeDistinctCount<R>(docs: any[], attribute?: string): R {
+  protected computeDistinctCount<R>(docs: any[], attribute?: string): R {
     const values = attribute
       ? this.collectValues(docs, attribute).filter(
           (value) => value !== undefined && value !== null
@@ -592,7 +592,7 @@ export class CouchDBStatement<
     return seen.size as unknown as R;
   }
 
-  private computeDistinctValues<R>(docs: any[], attribute?: string): R {
+  protected computeDistinctValues<R>(docs: any[], attribute?: string): R {
     if (!attribute) return [] as unknown as R;
     const values = this.collectValues(docs, attribute);
     const seen = new Set<string>();
@@ -607,7 +607,7 @@ export class CouchDBStatement<
     return unique as unknown as R;
   }
 
-  private computeSum<R>(docs: any[], attribute?: string): R {
+  protected computeSum<R>(docs: any[], attribute?: string): R {
     if (!attribute) return docs.length as unknown as R;
     const values = this.collectValues(docs, attribute).filter(
       (value) => value !== undefined && value !== null
@@ -620,7 +620,7 @@ export class CouchDBStatement<
     return sum as unknown as R;
   }
 
-  private computeAverage<R>(docs: any[], attribute?: string): R {
+  protected computeAverage<R>(docs: any[], attribute?: string): R {
     if (!attribute) return 0 as unknown as R;
     const values = this.collectValues(docs, attribute).filter(
       (value) => value !== undefined && value !== null
@@ -634,7 +634,7 @@ export class CouchDBStatement<
     return (sum / values.length) as unknown as R;
   }
 
-  private computeMinMax<R>(
+  protected computeMinMax<R>(
     docs: any[],
     attribute: string | undefined,
     mode: "min" | "max"
@@ -664,7 +664,7 @@ export class CouchDBStatement<
     return currentValue as unknown as R;
   }
 
-  private computeGroupBy<R>(docs: any[], attribute: string): R {
+  protected computeGroupBy<R>(docs: any[], attribute: string): R {
     const grouped: Record<string, any[]> = {};
     const values = this.collectValues(docs, attribute);
     docs.forEach((doc, index) => {
@@ -675,7 +675,7 @@ export class CouchDBStatement<
     return grouped as unknown as R;
   }
 
-  private groupSelectResults(docs: any[]): Record<string, any[]> {
+  protected groupSelectResults(docs: any[]): Record<string, any[]> {
     if (!this.groupBySelectors?.length) return {};
     const attribute = this.resolveSelectorAttribute(this.groupBySelectors[0]);
     if (!attribute) return {};
@@ -690,14 +690,14 @@ export class CouchDBStatement<
     return grouped;
   }
 
-  private collectValues(docs: any[], attribute: string): any[] {
+  protected collectValues(docs: any[], attribute: string): any[] {
     return docs.map((doc) => {
       if (!doc || typeof doc !== "object") return undefined;
       return this.convertValueByAttribute(attribute, doc[attribute]);
     });
   }
 
-  private convertValueByAttribute(attribute: string, value: any): any {
+  protected convertValueByAttribute(attribute: string, value: any): any {
     if (!this.fromSelector) return value;
     const attributeType = this.getAttributeType(attribute);
     if (attributeType === "date") {
@@ -712,7 +712,7 @@ export class CouchDBStatement<
     return value;
   }
 
-  private getAttributeType(attribute?: string): string | undefined {
+  protected getAttributeType(attribute?: string): string | undefined {
     if (!attribute || !this.fromSelector) return undefined;
     if (this.attributeTypeCache.has(attribute)) {
       return this.attributeTypeCache.get(attribute);
@@ -726,7 +726,7 @@ export class CouchDBStatement<
     return normalized;
   }
 
-  private normalizeMetaType(metaType: any): string | undefined {
+  protected normalizeMetaType(metaType: any): string | undefined {
     if (!metaType) return undefined;
     if (typeof metaType === "string") return metaType.toLowerCase();
     if (typeof metaType === "function" && metaType.name)
@@ -734,7 +734,7 @@ export class CouchDBStatement<
     return undefined;
   }
 
-  private normalizeComparable(value: any): number | null {
+  protected normalizeComparable(value: any): number | null {
     if (typeof value === "number") return value;
     if (typeof value === "bigint") return Number(value);
     if (value instanceof Date) return value.getTime();
@@ -743,7 +743,7 @@ export class CouchDBStatement<
     return null;
   }
 
-  private groupKey(value: any): string {
+  protected groupKey(value: any): string {
     if (value === undefined) return "undefined";
     if (value === null) return "null";
     if (typeof value === "symbol") return value.toString();
@@ -757,7 +757,7 @@ export class CouchDBStatement<
     return String(value);
   }
 
-  private toNumericValue(value: any, field: string, context: string): number {
+  protected toNumericValue(value: any, field: string, context: string): number {
     if (typeof value === "number") return value;
     if (typeof value === "bigint") return Number(value);
     if (value instanceof Date) return value.getTime();
@@ -768,7 +768,7 @@ export class CouchDBStatement<
     );
   }
 
-  private convertAggregateValue(
+  protected convertAggregateValue(
     attribute: string | undefined,
     value: any
   ): any {
@@ -776,14 +776,14 @@ export class CouchDBStatement<
     return this.convertValueByAttribute(attribute, value);
   }
 
-  private resolveSelectorAttribute(
+  protected resolveSelectorAttribute(
     selector?: SelectSelector<M> | null
   ): string | undefined {
     if (selector == null) return undefined;
     return String(selector);
   }
 
-  private missingDecorator(
+  protected missingDecorator(
     kind: ViewKind | "avg",
     attribute?: string
   ): UnsupportedError {
@@ -797,7 +797,7 @@ export class CouchDBStatement<
     );
   }
 
-  private decoratorForKind(kind: ViewKind | "avg"): string {
+  protected decoratorForKind(kind: ViewKind | "avg"): string {
     const map: Record<string, string> = {
       count: "@count",
       sum: "@sum",
@@ -811,7 +811,7 @@ export class CouchDBStatement<
     return map[kind] || `@${kind}`;
   }
 
-  private processViewResponse<R>(
+  protected processViewResponse<R>(
     info: CouchDBAggregateInfo,
     response: ViewResponse
   ): R {
@@ -845,13 +845,13 @@ export class CouchDBStatement<
     ) as unknown as R;
   }
 
-  private isViewAggregate(
+  protected isViewAggregate(
     info: CouchDBAggregateInfo
   ): info is Extract<CouchDBAggregateInfo, { kind: ViewKind }> {
     return info.kind !== "avg";
   }
 
-  private getCouchAdapter(): CouchDBAdapter<any, any, any> {
+  protected getCouchAdapter(): CouchDBAdapter<any, any, any> {
     return this.adapter as unknown as CouchDBAdapter<any, any, any>;
   }
 
