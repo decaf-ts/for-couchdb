@@ -144,11 +144,11 @@ export class CouchDBPaginator<M extends Model> extends Paginator<
     if (!this._recordCount || !this._totalPages) {
       this._totalPages = this._recordCount = 0;
       const countResults =
-        (await this.adapter.raw<M[], true>(
-          { ...statement, limit: Number.MAX_VALUE },
-          true,
-          ...ctxArgs
-        )) || [];
+      (await this.adapter.raw<M[], true>(
+        { ...statement, limit: Number.MAX_SAFE_INTEGER },
+        true,
+        ...ctxArgs
+      )) || [];
       this._recordCount = countResults.length;
       if (this._recordCount > 0) {
         const size = statement?.limit || this.size;
