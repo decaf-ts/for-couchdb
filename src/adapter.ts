@@ -5,20 +5,24 @@ import {
   Paginator,
   RawResult,
   ContextualArgs,
+  FlagsOf,
+  MaybeContextualArg,
   PreparedModel,
 } from "@decaf-ts/core";
 import { CouchDBKeys, reservedAttributes } from "./constants";
 import {
   BaseError,
   ConflictError,
+  ComposedFromMetadata,
   InternalError,
   NotFoundError,
+  OperationKeys,
   prefixMethod,
   type PrimaryKeyType,
 } from "@decaf-ts/db-decorators";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
-import { type MangoQuery, ViewResponse } from "./types";
+import { type MangoQuery, ViewResponse, CouchDBFlags } from "./types";
 import { CouchDBPaginator, CouchDBStatement } from "./query";
 import { Context } from "@decaf-ts/core";
 import { type Constructor } from "@decaf-ts/decoration";
@@ -26,6 +30,8 @@ import { final } from "@decaf-ts/logging";
 import { CouchDBRepository } from "./repository";
 import { getMetadata, removeMetadata, setMetadata } from "./metadata";
 import { Repository } from "@decaf-ts/core";
+import { extractEqualityFilters } from "./query/selector-utils";
+import { decomposePrimaryKeySegments } from "./query/id-utils";
 
 /**
  * @description Abstract adapter for CouchDB database operations
@@ -70,11 +76,28 @@ import { Repository } from "@decaf-ts/core";
  *   }
  * }
  */
+type GenerateIdOptions<M extends Model = Model> = {
+  clazz?: Constructor<M>;
+  ctx?: Context<CouchDBFlags>;
+};
+
+type NativeIndexPlan = {
+  tableName: string;
+  clazz: Constructor<Model>;
+  startkey: string;
+  endkey?: string;
+  inclusiveEnd: boolean;
+  descending: boolean;
+  limit?: number;
+  skip?: number;
+};
+
 export abstract class CouchDBAdapter<
   CONF,
   CONN,
-  C extends Context<any>,
+  C extends Context<CouchDBFlags>,
 > extends Adapter<CONF, CONN, MangoQuery, C> {
+  private tableModelCache?: Map<string, Constructor<Model>>;
   protected constructor(scope: CONF, flavour: string, alias?: string) {
     super(scope, flavour, alias);
     [this.create, this.createAll, this.update, this.updateAll].forEach((m) => {
@@ -120,6 +143,36 @@ export abstract class CouchDBAdapter<
     R extends Repository<any, Adapter<CONF, CONN, MangoQuery, C>>,
   >(): Constructor<R> {
     return CouchDBRepository as unknown as Constructor<R>;
+  }
+
+  protected getModelByTable(
+    tableName: string
+  ): Constructor<Model> | undefined {
+    if (!this.tableModelCache) {
+      const models = Adapter.models(this.flavour);
+      this.tableModelCache = new Map(
+        models.map((ctor) => [Model.tableName(ctor), ctor])
+      );
+    }
+    return this.tableModelCache.get(tableName);
+  }
+
+  protected override async flags<M extends Model>(
+    operation: OperationKeys | string,
+    model: Constructor<M> | Constructor<M>[] | undefined,
+    flags: Partial<FlagsOf<C>>,
+    ...args: MaybeContextualArg<C>
+  ): Promise<FlagsOf<C>> {
+    const resolved = (await super.flags(
+      operation,
+      model,
+      flags,
+      ...args
+    )) as FlagsOf<C> & CouchDBFlags;
+    if (typeof resolved.nativeIndexing === "undefined") {
+      resolved.nativeIndexing = false;
+    }
+    return resolved;
   }
 
   /**
@@ -257,11 +310,14 @@ export abstract class CouchDBAdapter<
     model: Record<string, any>,
     ...args: ContextualArgs<C>
   ): [Constructor<M>, PrimaryKeyType, Record<string, any>, ...any[], Context] {
-    const { ctxArgs } = this.logCtx(args, this.createPrefix);
+    const { ctx, ctxArgs } = this.logCtx(args, this.createPrefix);
     const tableName = Model.tableName(clazz);
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
-    record[CouchDBKeys.ID] = this.generateId(tableName, id as any);
+    record[CouchDBKeys.ID] = this.generateId(tableName, id as any, {
+      clazz,
+      ctx,
+    });
     Object.assign(record, model);
     return [clazz, id, record, ...ctxArgs];
   }
@@ -301,11 +357,14 @@ export abstract class CouchDBAdapter<
     const tableName = Model.tableName(clazz);
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
-    const { ctxArgs } = this.logCtx(args, this.createAllPrefix);
+    const { ctx, ctxArgs } = this.logCtx(args, this.createAllPrefix);
     const records = ids.map((id, count) => {
       const record: Record<string, any> = {};
       record[CouchDBKeys.TABLE] = tableName;
-      record[CouchDBKeys.ID] = this.generateId(tableName, id);
+      record[CouchDBKeys.ID] = this.generateId(tableName, id, {
+        clazz,
+        ctx,
+      });
       Object.assign(record, models[count]);
       return record;
     });
@@ -344,10 +403,13 @@ export abstract class CouchDBAdapter<
     ...args: ContextualArgs<C>
   ) {
     const tableName = Model.tableName(clazz);
-    const { ctxArgs } = this.logCtx(args, this.updatePrefix);
+    const { ctx, ctxArgs } = this.logCtx(args, this.updatePrefix);
     const record: Record<string, any> = {};
     record[CouchDBKeys.TABLE] = tableName;
-    record[CouchDBKeys.ID] = this.generateId(tableName, id);
+    record[CouchDBKeys.ID] = this.generateId(tableName, id, {
+      clazz,
+      ctx,
+    });
     const rev = model[PersistenceKeys.METADATA];
     if (!rev)
       throw new InternalError(
@@ -393,11 +455,14 @@ export abstract class CouchDBAdapter<
     const tableName = Model.tableName(clazz);
     if (ids.length !== models.length)
       throw new InternalError("Ids and models must have the same length");
-    const { ctxArgs } = this.logCtx(args, this.updateAllPrefix);
+    const { ctx, ctxArgs } = this.logCtx(args, this.updateAllPrefix);
     const records = ids.map((id, count) => {
       const record: Record<string, any> = {};
       record[CouchDBKeys.TABLE] = tableName;
-      record[CouchDBKeys.ID] = this.generateId(tableName, id);
+      record[CouchDBKeys.ID] = this.generateId(tableName, id, {
+        clazz,
+        ctx,
+      });
       const rev = models[count][PersistenceKeys.METADATA];
       if (!rev)
         throw new InternalError(
@@ -431,8 +496,151 @@ export abstract class CouchDBAdapter<
    * @param {string|number} id - The ID of the record
    * @return {string} The generated CouchDB document ID
    */
-  protected generateId(tableName: string, id: PrimaryKeyType) {
-    return [tableName, id].join(CouchDBKeys.SEPARATOR);
+  protected generateId<M extends Model>(
+    tableName: string,
+    id: PrimaryKeyType,
+    options?: GenerateIdOptions<M>
+  ) {
+    const ctx = options?.ctx;
+    const clazz = options?.clazz;
+    if (!this.hasNativeIndexing(ctx) || !clazz) {
+      return [tableName, id].join(CouchDBKeys.SEPARATOR);
+    }
+    const pk = Model.pk(clazz) as keyof M;
+    const segments =
+      decomposePrimaryKeySegments(clazz, pk, id) || undefined;
+    if (!segments || !segments.length) {
+      return [tableName, id].join(CouchDBKeys.SEPARATOR);
+    }
+    return [tableName, ...segments].join(CouchDBKeys.SEPARATOR);
+  }
+
+  protected resolveNativeIndexPlan(
+    query: MangoQuery,
+    ctx: Context<CouchDBFlags>
+  ): NativeIndexPlan | undefined {
+    if (!this.hasNativeIndexing(ctx)) return undefined;
+    if (!query?.selector || (query.fields && query.fields.length)) {
+      return undefined;
+    }
+    const filters = extractEqualityFilters(query.selector);
+    if (!filters) return undefined;
+    const tableName = filters[CouchDBKeys.TABLE];
+    if (typeof tableName !== "string" || !tableName.length) return undefined;
+    const clazz = this.getModelByTable(tableName);
+    if (!clazz) return undefined;
+    const pkAttr = Model.pk(clazz) as string;
+    const normalized = Object.assign({}, filters);
+    delete normalized[CouchDBKeys.TABLE];
+    const composed = Model.composed(
+      clazz,
+      pkAttr as keyof Model
+    ) as ComposedFromMetadata | undefined;
+    const componentNames = composed ? composed.args.slice() : [pkAttr];
+    const prefixValues: (string | undefined)[] = new Array(
+      componentNames.length
+    ).fill(undefined);
+    if (typeof normalized[pkAttr] !== "undefined") {
+      const pkValue = normalized[pkAttr];
+      const segments = composed
+        ? decomposePrimaryKeySegments(
+            clazz,
+            pkAttr as keyof Model,
+            pkValue as PrimaryKeyType
+          )
+        : [String(pkValue)];
+      if (segments) {
+        segments.forEach((segment, index) => {
+          if (index < prefixValues.length) {
+            prefixValues[index] = segment;
+          }
+        });
+      }
+      delete normalized[pkAttr];
+    }
+    componentNames.forEach((name, index) => {
+      if (typeof normalized[name] !== "undefined") {
+        prefixValues[index] = String(normalized[name]);
+        delete normalized[name];
+      }
+    });
+    const remainingKeys = Object.keys(normalized);
+    if (remainingKeys.length) return undefined;
+    let encounteredUndefined = false;
+    for (const value of prefixValues) {
+      if (typeof value === "undefined") encounteredUndefined = true;
+      else if (encounteredUndefined) return undefined;
+    }
+    const definedValues = prefixValues.filter(
+      (val): val is string => typeof val !== "undefined"
+    );
+    const definedCount = definedValues.length;
+    const sep = CouchDBKeys.SEPARATOR;
+    const fullPrefix =
+      definedCount > 0 ? [tableName, ...definedValues].join(sep) : tableName;
+    let startkey: string;
+    let endkey: string | undefined;
+    if (componentNames.length === 0 || definedCount === 0) {
+      const base = `${tableName}${sep}`;
+      startkey = base;
+      endkey = `${base}\ufff0`;
+    } else if (definedCount === componentNames.length) {
+      startkey = fullPrefix;
+      endkey = fullPrefix;
+    } else {
+      const base = `${fullPrefix}${sep}`;
+      startkey = base;
+      endkey = `${base}\ufff0`;
+    }
+    const sort = Array.isArray(query.sort) ? query.sort : undefined;
+    let descending = false;
+    if (sort && sort.length) {
+      if (sort.length > 1) return undefined;
+      const entry = sort[0];
+      const sortField = Object.keys(entry)[0];
+      if (!sortField || sortField !== pkAttr) return undefined;
+      const dir = String(
+        (entry as Record<string, any>)[sortField] ?? "asc"
+      ).toLowerCase();
+      descending = dir === "desc";
+    }
+    if (descending && endkey) {
+      const originalStart = startkey;
+      startkey = endkey;
+      endkey = originalStart;
+    }
+    return {
+      tableName,
+      clazz,
+      startkey,
+      endkey,
+      inclusiveEnd: true,
+      descending,
+      limit: query.limit,
+      skip: query.skip,
+    };
+  }
+
+  nativeIndexPlan(
+    query: MangoQuery,
+    ctx: Context<CouchDBFlags>
+  ): NativeIndexPlan | undefined {
+    return this.resolveNativeIndexPlan(query, ctx);
+  }
+
+  protected hasNativeIndexing(
+    ctx?: Context<CouchDBFlags>
+  ): boolean {
+    if (!ctx) return false;
+    if (typeof (ctx as Context<CouchDBFlags>).getOrUndefined === "function") {
+      const flag = ctx.getOrUndefined("nativeIndexing");
+      return !!flag;
+    }
+    try {
+      return !!ctx.get("nativeIndexing" as keyof CouchDBFlags);
+    } catch {
+      return false;
+    }
   }
 
   /**

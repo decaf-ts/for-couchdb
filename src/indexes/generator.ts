@@ -17,7 +17,7 @@ import { generateViewIndexes } from "../views";
  * @return {string} The generated index name
  * @memberOf module:for-couchdb
  */
-function generateIndexName(
+export function buildQueryIndexName(
   name: string[],
   direction?: OrderDirection,
   compositions?: string[],
@@ -43,14 +43,14 @@ function generateIndexName(
  * sequenceDiagram
  *   participant Caller
  *   participant generateIndexes
- *   participant generateIndexName
+ *   participant buildQueryIndexName
  *   participant Repository
  *
  *   Caller->>generateIndexes: models
  *
  *   Note over generateIndexes: Create base table index
- *   generateIndexes->>generateIndexName: [CouchDBKeys.TABLE]
- *   generateIndexName-->>generateIndexes: tableName
+ *   generateIndexes->>buildQueryIndexName: [CouchDBKeys.TABLE]
+ *   buildQueryIndexName-->>generateIndexes: tableName
  *   generateIndexes->>generateIndexes: Create table index config
  *
  *   loop For each model
@@ -81,7 +81,7 @@ function generateIndexName(
 export function generateIndexes<M extends Model>(
   models: Constructor<M>[]
 ): CreateIndexRequest[] {
-  const tableName = generateIndexName([CouchDBKeys.TABLE]);
+  const tableName = buildQueryIndexName([CouchDBKeys.TABLE]);
   const indexes: Record<string, CreateIndexRequest> = {};
   indexes[tableName] = {
     index: {
@@ -96,13 +96,13 @@ export function generateIndexes<M extends Model>(
     const modelTableName = Model.tableName(m);
     let defaultQueryAttrs: string[] = [];
     try {
-      defaultQueryAttrs = Model.defaultQueryAttributes(m);
+      defaultQueryAttrs = Model.defaultQueryAttributes(m, false);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       defaultQueryAttrs = [];
     }
     defaultQueryAttrs.forEach((attr) => {
-      const baseName = generateIndexName([
+      const baseName = buildQueryIndexName([
         modelTableName,
         attr,
         "defaultQuery",
@@ -123,7 +123,7 @@ export function generateIndexes<M extends Model>(
       indexes[baseName].index.partial_filter_selector = defaultFilter;
 
       [OrderDirection.ASC, OrderDirection.DSC].forEach((direction) => {
-        const sortedName = generateIndexName(
+        const sortedName = buildQueryIndexName(
           [modelTableName, attr, "defaultQuery"],
           direction
         );

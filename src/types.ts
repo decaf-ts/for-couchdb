@@ -1,3 +1,9 @@
+import { AdapterFlags } from "@decaf-ts/core";
+
+export interface CouchDBFlags extends AdapterFlags {
+  nativeIndexing?: boolean;
+}
+
 /**
  * @description Response from a CouchDB Mango query
  * @summary Contains the matching documents and additional metadata about the query execution
