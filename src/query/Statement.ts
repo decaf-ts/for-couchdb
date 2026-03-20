@@ -27,7 +27,6 @@ import {
   CouchDBQueryLimit,
 } from "./constants";
 import { DBKeys } from "@decaf-ts/db-decorators";
-import type { Context } from "@decaf-ts/db-decorators";
 import { Metadata } from "@decaf-ts/decoration";
 import {
   generateDesignDocName,
@@ -286,25 +285,28 @@ export class CouchDBStatement<
    * @param {"Number" | "BigInt" | undefined} sequenceType - The type of the sequence
    * @return {any} The processed record
    */
-  protected processRecord(
-    r: any,
-    pkAttr: keyof M,
-    sequenceType: "Number" | "BigInt" | undefined,
-    ctx: Context
-  ) {
-    if (r[CouchDBKeys.ID]) {
-      const [, ...keyArgs] = r[CouchDBKeys.ID].split(CouchDBKeys.SEPARATOR);
+  protected override processRecord(record: any, ctx: ContextOf<A>): M {
+    const pkAttr = Model.pk(this.fromSelector);
+    const type = Metadata.get(
+      this.fromSelector,
+      Metadata.key(DBKeys.ID, pkAttr as string)
+    )?.type;
 
-      const id = keyArgs.join("_");
-      return this.adapter.revert(
-        r,
-        this.fromSelector,
-        Sequence.parseValue(sequenceType, id),
-        undefined,
-        ctx
+    if (record[CouchDBKeys.ID]) {
+      const [, ...keyArgs] = record[CouchDBKeys.ID].split(
+        CouchDBKeys.SEPARATOR
       );
+      const id = keyArgs.join("_");
+      record[pkAttr] = Sequence.parseValue(type as any, id);
     }
-    return r;
+
+    return this.adapter.revert(
+      record,
+      this.fromSelector,
+      record[pkAttr],
+      undefined,
+      ctx
+    );
   }
 
   /**
@@ -321,15 +323,7 @@ export class CouchDBStatement<
       return this.executeAggregate<R>(aggregator, ctx);
     }
     const results: any[] = await this.adapter.raw(rawInput, true, ctx);
-
-    const pkAttr = Model.pk(this.fromSelector);
-    const type = Metadata.get(
-      this.fromSelector,
-      Metadata.key(DBKeys.ID, pkAttr as string)
-    )?.type;
-    const processed = results.map((r) =>
-      this.processRecord(r, pkAttr, type, ctx)
-    );
+    const processed = results.map((r) => this.processRecord(r, ctx));
     if (this.manualAggregation) {
       const manualResult = this.executeManualAggregation<R>(
         processed,
@@ -344,7 +338,9 @@ export class CouchDBStatement<
       return this.groupSelectResults(processed) as R;
     }
 
-    if (!this.selectSelector) return processed as R;
+    if (!this.selectSelector) {
+      return (await this.applyAfterHandlersToResult(processed, ctx)) as R;
+    }
     return results as R;
   }
 
