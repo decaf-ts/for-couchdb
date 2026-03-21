@@ -1,7 +1,7 @@
 {
   "name": "@decaf-ts/for-couchdb",
   "version": "0.5.0",
-  "description": "template for ts projects",
+  "description": "decaf-ts couchdb wrappers",
   "type": "module",
   "exports": {
     "require": "./lib/index.cjs",
@@ -16,8 +16,8 @@
     "set-git-auth": "git config url.\"https://api:$(cat .token)@github.com/\".insteadOf \"https://github.com/\" && git config url.\"https://ssh:$(cat .token)@github.com/\".insteadOf \"ssh://git@github.com/\" && git config url.\"https://git:$(cat .token)@github.com/\".insteadOf \"git@github.com:\"",
     "flash-forward": "npx npm-check-updates -u && npm run do-install",
     "reset": "rm -rf * && git checkout . && git pull && npm run do-install",
-    "build": "npx build-scripts --dev",
-    "build:prod": "npx build-scripts --prod",
+    "build": "npx decaf build --dev",
+    "build:prod": "npx decaf build --prod",
     "test": "jest --runInBand --coverage --detectOpenHandles --passWithNoTests",
     "test:unit": "jest --testPathPatterns=\"/tests/unit\" --passWithNoTests --detectOpenHandles",
     "test:integration": "jest --testPathPatterns=\"/tests/(integration)\" --passWithNoTests --detectOpenHandles",
@@ -83,6 +83,7 @@
   },
   "homepage": "https://github.com/decaf-ts/for-couchdb#readme",
   "devDependencies": {
+    "@decaf-ts/cli": "latest",
     "@decaf-ts/utils": "latest",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.5.0"
@@ -95,9 +96,5 @@
     "@decaf-ts/injectable-decorators": "latest",
     "@decaf-ts/logging": "latest",
     "@decaf-ts/transactional-decorators": "latest"
-  },
-  "overrides": {
-    "minimatch": "^10.2.2",
-    "test-exclude": "7.0.1"
   }
 }
