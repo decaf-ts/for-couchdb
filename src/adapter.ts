@@ -1,5 +1,6 @@
 import {
   Adapter,
+  AdapterFlags,
   PersistenceKeys,
   ConnectionError,
   Paginator,
@@ -90,12 +91,10 @@ export abstract class CouchDBAdapter<
    * @return {CouchDBStatement<M, any>} A new CouchDBStatement instance
    */
   @final()
-  Statement<M extends Model>(): CouchDBStatement<
-    M,
-    Adapter<CONF, CONN, MangoQuery, C>,
-    any
-  > {
-    return new CouchDBStatement(this);
+  Statement<M extends Model>(
+    overrides?: Partial<AdapterFlags>
+  ): CouchDBStatement<M, Adapter<CONF, CONN, MangoQuery, C>, any> {
+    return new CouchDBStatement(this, overrides);
   }
 
   override Paginator<M extends Model>(

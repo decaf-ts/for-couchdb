@@ -1,5 +1,6 @@
 import {
   Adapter,
+  AdapterFlags,
   Condition,
   ContextOf,
   GroupOperator,
@@ -108,8 +109,8 @@ export class CouchDBStatement<
   protected manualAggregation?: CouchDBAggregateInfo;
   protected attributeTypeCache: Map<string, string | undefined> = new Map();
 
-  constructor(adapter: A) {
-    super(adapter);
+  constructor(adapter: A, overrides?: Partial<AdapterFlags>) {
+    super(adapter, overrides);
   }
 
   /**
