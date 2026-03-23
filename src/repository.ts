@@ -18,8 +18,8 @@ export class CouchDBRepository<
   M extends Model,
   A extends CouchDBAdapter<any, any, any>,
 > extends Repository<M, A> {
-  constructor(adapter: A, model: Constructor<M>) {
-    super(adapter, model);
+  constructor(adapter: A, model: Constructor<M>, force: boolean = false) {
+    super(adapter, model, force);
   }
 
   protected assignMetadata(model: M, source?: M): M;
