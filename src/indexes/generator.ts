@@ -81,19 +81,27 @@ function generateIndexName(
 export function generateIndexes<M extends Model>(
   models: Constructor<M>[]
 ): CreateIndexRequest[] {
-  const tableName = generateIndexName([CouchDBKeys.TABLE]);
   const indexes: Record<string, CreateIndexRequest> = {};
-  indexes[tableName] = {
-    index: {
-      fields: [CouchDBKeys.TABLE],
-    },
-    name: tableName,
-    ddoc: tableName,
-    type: "json",
-  };
 
   models.forEach((m) => {
     const modelTableName = Model.tableName(m);
+
+    // Per-table base index: keep it scoped via partial_filter_selector so all indexes are per-table.
+    const tableOnlyName = generateIndexName([modelTableName, CouchDBKeys.TABLE]);
+    indexes[tableOnlyName] = {
+      index: {
+        fields: [CouchDBKeys.TABLE],
+        partial_filter_selector: {
+          [CouchDBKeys.TABLE]: {
+            [CouchDBOperator.EQUAL]: modelTableName,
+          },
+        },
+      },
+      name: tableOnlyName,
+      ddoc: tableOnlyName,
+      type: "json",
+    };
+
     let defaultQueryAttrs: string[] = [];
     try {
       defaultQueryAttrs = Model.defaultQueryAttributes(m);
@@ -142,6 +150,8 @@ export function generateIndexes<M extends Model>(
           ddoc: sortedName,
           type: "json",
         };
+        // Keep the index restricted to this model's documents for all orders.
+        indexes[sortedName].index.partial_filter_selector = defaultFilter;
       });
     });
 
@@ -212,9 +222,8 @@ export function generateIndexes<M extends Model>(
             ddoc: name,
             type: "json",
           };
-          if (!sort) {
-            indexes[name].index.partial_filter_selector = tableFilter;
-          }
+          // Always restrict to this model's documents (base + direction-specific).
+          indexes[name].index.partial_filter_selector = tableFilter;
         }
 
         generate();

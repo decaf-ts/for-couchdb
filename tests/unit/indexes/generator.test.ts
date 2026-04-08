@@ -1,101 +1,157 @@
-import { BaseModel, OrderDirection } from "@decaf-ts/core";
-import { Model } from "@decaf-ts/decorator-validation";
+import {
+  BaseModel,
+  defaultQueryAttr,
+  index,
+  OrderDirection,
+  table,
+} from "@decaf-ts/core";
 import { generateIndexes } from "../../../src/indexes/generator";
 import { CouchDBKeys } from "../../../src/constants";
 
-class CompositeIndexModel extends BaseModel {}
-
 describe("generateIndexes", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+  it("creates direction-specific indexes for indexed compositions (no mocking)", () => {
+    @table("composite_index_model")
+    class CompositeIndexModel extends BaseModel {
+      @index([OrderDirection.ASC, OrderDirection.DSC], ["secondary"])
+      primary!: string;
 
-  it("creates direction-specific indexes for indexed compositions", () => {
-    jest.spyOn(Model, "indexes").mockReturnValue({
-      primary: {
-        index: {
-          directions: [OrderDirection.ASC, OrderDirection.DSC],
-          compositions: ["secondary"],
-          name: undefined,
-        },
-      },
-    } as any);
-
-    jest
-      .spyOn(Model, "tableName")
-      .mockReturnValue("composite_index_model");
+      secondary!: string;
+    }
 
     const indexes = generateIndexes([CompositeIndexModel]);
 
-    const baseIndex = indexes.find(
-      (idx) =>
-        Array.isArray(idx.index.fields) &&
-        (idx.index.fields as any[]).includes(CouchDBKeys.TABLE)
-    );
+    // Per-table base "table" index must exist and be scoped to this model table.
+    const baseTableName = "composite_index_model_table_index";
+    const baseTableIndex = indexes.find((idx) => idx.name === baseTableName) as any;
+    expect(baseTableIndex).toBeDefined();
+    expect(baseTableIndex.index.fields).toEqual([CouchDBKeys.TABLE]);
+    expect(baseTableIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "composite_index_model" },
+    });
+
+    const baseName = "composite_index_model_primary_secondary_index";
+    const baseIndex = indexes.find((idx) => idx.name === baseName) as any;
     expect(baseIndex).toBeDefined();
+    expect(baseIndex.index.fields).toEqual([
+      CouchDBKeys.TABLE,
+      "primary",
+      "secondary",
+    ]);
+    expect(baseIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "composite_index_model" },
+    });
 
-    const sortedFields = indexes
-      .map((idx) => idx.index.fields)
-      .filter(
-        (
-          fields
-        ): fields is Record<string, OrderDirection>[] =>
-          Array.isArray(fields) &&
-          typeof fields[0] === "object" &&
-          typeof fields[1] === "object" &&
-          "primary" in (fields[1] as Record<string, OrderDirection>)
-      );
+    const ascName = "composite_index_model_primary_secondary_asc_index";
+    const ascIndex = indexes.find((idx) => idx.name === ascName) as any;
+    expect(ascIndex).toBeDefined();
+    expect(ascIndex.index.fields).toEqual([
+      { [CouchDBKeys.TABLE]: OrderDirection.ASC },
+      { primary: OrderDirection.ASC },
+      { secondary: OrderDirection.ASC },
+    ]);
+    expect(ascIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "composite_index_model" },
+    });
 
-    const sortedFieldsWithoutTable = sortedFields.map((fields) =>
-      fields.slice(1)
-    );
-
-    expect(sortedFieldsWithoutTable.length).toBe(2);
-
-    const expectedCombos = [
-      [
-        { primary: OrderDirection.ASC },
-        { secondary: OrderDirection.ASC },
-      ],
-      [
-        { primary: OrderDirection.DSC },
-        { secondary: OrderDirection.DSC },
-      ],
-    ];
-
-    expectedCombos.forEach((combo) => {
-      expect(sortedFieldsWithoutTable).toEqual(
-        expect.arrayContaining([combo])
-      );
+    const descName = "composite_index_model_primary_secondary_desc_index";
+    const descIndex = indexes.find((idx) => idx.name === descName) as any;
+    expect(descIndex).toBeDefined();
+    expect(descIndex.index.fields).toEqual([
+      { [CouchDBKeys.TABLE]: OrderDirection.DSC },
+      { primary: OrderDirection.DSC },
+      { secondary: OrderDirection.DSC },
+    ]);
+    expect(descIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "composite_index_model" },
     });
   });
 
-  it("indexes default query attributes", () => {
-    class DefaultAttrModel extends BaseModel {}
-
-    jest.spyOn(Model, "indexes").mockReturnValue({} as any);
-    jest
-      .spyOn(Model, "defaultQueryAttributes")
-      .mockReturnValue(["defaultAttr"] as any);
-    jest.spyOn(Model, "tableName").mockReturnValue("default_attr_model");
+  it("indexes default query attributes for each order (no mocking)", () => {
+    @table("default_attr_model")
+    class DefaultAttrModel extends BaseModel {
+      @defaultQueryAttr()
+      defaultAttr!: string;
+    }
 
     const indexes = generateIndexes([DefaultAttrModel]);
 
-    const defaultIndex = indexes.find(
-      (idx) =>
-        idx.name?.includes("default_attr_model") &&
-        Array.isArray(idx.index.fields) &&
-        (idx.index.fields as any[])[1] === "defaultAttr"
-    );
-    expect(defaultIndex).toBeDefined();
-    const sortedDefaultIndexes = indexes.filter(
-      (idx) =>
-        Array.isArray(idx.index.fields) &&
-        typeof (idx.index.fields as any[])[1] === "object" &&
-        (idx.index.fields as any[])[1]["defaultAttr"] !== undefined
-    );
-    expect(sortedDefaultIndexes.length).toBe(2);
+    const baseName = "default_attr_model_defaultAttr_defaultQuery_index";
+    const baseIndex = indexes.find((idx) => idx.name === baseName) as any;
+    expect(baseIndex).toBeDefined();
+    expect(baseIndex.index.fields).toEqual([CouchDBKeys.TABLE, "defaultAttr"]);
+    expect(baseIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "default_attr_model" },
+    });
 
-    jest.restoreAllMocks();
+    const ascName = "default_attr_model_defaultAttr_defaultQuery_asc_index";
+    const ascIndex = indexes.find((idx) => idx.name === ascName) as any;
+    expect(ascIndex).toBeDefined();
+    expect(ascIndex.index.fields).toEqual([
+      { [CouchDBKeys.TABLE]: OrderDirection.ASC },
+      { defaultAttr: OrderDirection.ASC },
+    ]);
+    expect(ascIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "default_attr_model" },
+    });
+
+    const descName = "default_attr_model_defaultAttr_defaultQuery_desc_index";
+    const descIndex = indexes.find((idx) => idx.name === descName) as any;
+    expect(descIndex).toBeDefined();
+    expect(descIndex.index.fields).toEqual([
+      { [CouchDBKeys.TABLE]: OrderDirection.DSC },
+      { defaultAttr: OrderDirection.DSC },
+    ]);
+    expect(descIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "default_attr_model" },
+    });
+  });
+
+  it("creates composed indexes and uses composed attributes in the generated name (no mocking)", () => {
+    @table("audit")
+    class AuditModel extends BaseModel {
+      @index([OrderDirection.ASC, OrderDirection.DSC], ["createdAt"])
+      recordId!: string;
+
+      createdAt!: Date;
+    }
+
+    const indexes = generateIndexes([AuditModel]);
+
+    const baseName = "audit_recordId_createdAt_index";
+    const baseIndex = indexes.find((idx) => idx.name === baseName) as any;
+    expect(baseIndex).toBeDefined();
+    expect(baseIndex.type).toBe("json");
+    expect(baseIndex.index.fields).toEqual([
+      CouchDBKeys.TABLE,
+      "recordId",
+      "createdAt",
+    ]);
+    expect(baseIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "audit" },
+    });
+
+    const ascName = "audit_recordId_createdAt_asc_index";
+    const ascIndex = indexes.find((idx) => idx.name === ascName) as any;
+    expect(ascIndex).toBeDefined();
+    expect(ascIndex.index.fields).toEqual([
+      { [CouchDBKeys.TABLE]: OrderDirection.ASC },
+      { recordId: OrderDirection.ASC },
+      { createdAt: OrderDirection.ASC },
+    ]);
+    expect(ascIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "audit" },
+    });
+
+    const descName = "audit_recordId_createdAt_desc_index";
+    const descIndex = indexes.find((idx) => idx.name === descName) as any;
+    expect(descIndex).toBeDefined();
+    expect(descIndex.index.fields).toEqual([
+      { [CouchDBKeys.TABLE]: OrderDirection.DSC },
+      { recordId: OrderDirection.DSC },
+      { createdAt: OrderDirection.DSC },
+    ]);
+    expect(descIndex.index.partial_filter_selector).toEqual({
+      [CouchDBKeys.TABLE]: { $eq: "audit" },
+    });
   });
 });
