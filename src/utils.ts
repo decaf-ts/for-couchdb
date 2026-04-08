@@ -195,7 +195,8 @@ export function generateIndexDoc(
   return {
     index: {
       fields: fields,
-      // partial_filter_selector: partialFilterSelector,
+      // Ensure all indexes are scoped to a single model/table.
+      partial_filter_selector: partialFilterSelector,
     },
     ddoc: [name, CouchDBKeys.DDOC].join(separator),
     name: name,
