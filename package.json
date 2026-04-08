@@ -1,6 +1,6 @@
 {
   "name": "@decaf-ts/for-couchdb",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "decaf-ts couchdb wrappers",
   "type": "module",
   "exports": {
