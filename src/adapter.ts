@@ -431,7 +431,18 @@ export abstract class CouchDBAdapter<
    * @return {string} The generated CouchDB document ID
    */
   protected generateId(tableName: string, id: PrimaryKeyType) {
-    return [tableName, id].join(CouchDBKeys.SEPARATOR);
+    const sep = CouchDBKeys.SEPARATOR;
+    // Avoid double-prefixing when a caller already provides a fully-qualified CouchDB _id.
+    // This happens in some cross-adapter flows (for example sequences) where the id may
+    // already be `${tableName}${sep}${pk}`.
+    if (
+      typeof id === "string" &&
+      id.startsWith(`${tableName}${sep}`) &&
+      id.split(sep).length >= 2
+    ) {
+      return id;
+    }
+    return `${tableName}${sep}${String(id)}`;
   }
 
   /**
