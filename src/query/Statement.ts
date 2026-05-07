@@ -27,7 +27,7 @@ import {
   CouchDBOperator,
   CouchDBQueryLimit,
 } from "./constants";
-import { DBKeys } from "@decaf-ts/db-decorators";
+import { DBKeys, DefaultSeparator } from "@decaf-ts/db-decorators";
 import { Metadata } from "@decaf-ts/decoration";
 import {
   generateDesignDocName,
@@ -274,8 +274,75 @@ export class CouchDBStatement<
     }
 
     if (this.offsetSelector) query.skip = this.offsetSelector;
+    this.attachDefaultQueryIndex(query);
 
     return query;
+  }
+
+  protected attachDefaultQueryIndex(query: MangoQuery): void {
+    if (!this.fromSelector || query.use_index) return;
+    const tableName = Model.tableName(this.fromSelector);
+    let defaultAttrs: string[] = [];
+    try {
+      defaultAttrs = Model.defaultQueryAttributes(this.fromSelector) as string[];
+    } catch {
+      defaultAttrs = [];
+    }
+    if (!defaultAttrs.length) return;
+
+    const rangedAttrs = this.collectStartsWithRangeAttrs(query.selector || {});
+    const matchedAttrs = defaultAttrs.filter((attr) => rangedAttrs.has(attr));
+    if (!matchedAttrs.length) return;
+
+    const sort = Array.isArray(query.sort) ? query.sort : [];
+    const sortEntry = sort
+      .map((entry) => Object.entries(entry || {})[0])
+      .find((entry) => entry && matchedAttrs.includes(entry[0]));
+
+    const targetAttr = (sortEntry?.[0] as string) || matchedAttrs[0];
+    const direction = (sortEntry?.[1] as OrderDirection | undefined) || undefined;
+    const suffix = direction ? [String(direction).toLowerCase()] : [];
+    const indexName = [
+      tableName,
+      targetAttr,
+      "defaultQuery",
+      ...suffix,
+      CouchDBKeys.INDEX,
+    ].join(DefaultSeparator);
+    query.use_index = indexName;
+  }
+
+  protected collectStartsWithRangeAttrs(selector: MangoSelector): Set<string> {
+    const attrs = new Set<string>();
+    const walk = (node: any): void => {
+      if (!node || typeof node !== "object") return;
+      if (Array.isArray(node)) {
+        node.forEach((child) => walk(child));
+        return;
+      }
+      Object.entries(node).forEach(([key, value]) => {
+        if (
+          key !== CouchDBGroupOperator.AND &&
+          key !== CouchDBGroupOperator.OR &&
+          value &&
+          typeof value === "object" &&
+          !Array.isArray(value)
+        ) {
+          const hasLower = Object.prototype.hasOwnProperty.call(
+            value,
+            CouchDBOperator.BIGGER_EQ
+          );
+          const hasUpper = Object.prototype.hasOwnProperty.call(
+            value,
+            CouchDBOperator.SMALLER
+          );
+          if (hasLower && hasUpper) attrs.add(key);
+        }
+        walk(value);
+      });
+    };
+    walk(selector);
+    return attrs;
   }
 
   /**
