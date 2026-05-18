@@ -111,7 +111,7 @@ export abstract class CouchDBAdapter<
    * @return {Promise<void>} A promise that resolves when initialization is complete
    */
   override async initialize(): Promise<void> {
-    const managedModels = Adapter.models(this.flavour);
+    const managedModels = Adapter.models(this.alias);
     return this.index(...managedModels);
   }
 
