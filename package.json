@@ -45,6 +45,7 @@
     "publish-docs": "docker run -it --rm --user $(id -u):$(id -g) -v \"$(pwd)/workdocs/confluence:/content\" -e ATLASSIAN_API_TOKEN=$(cat .confluence-token) ghcr.io/markdown-confluence/publish:latest",
     "docker:login": "echo $(cat .token) | docker login ghcr.io -u decaf --password-stdin",
     "docker:build": "npm run docker:build-booter && npm run docker:build-couchdb",
+    "docker:pull": "npm run docker:login && docker pull ghcr.io/decaf-ts/couchdb:latest && docker pull ghcr.io/decaf-ts/couchdb-booter:latest",
     "docker:build-booter": "docker build -t ghcr.io/decaf-ts/couchdb-booter:$(cat package.json | jq -r '.version') -t ghcr.io/decaf-ts/couchdb-booter:latest -f ./docker/Dockerfile-booter ./docker",
     "docker:build-couchdb": "docker build -t ghcr.io/decaf-ts/couchdb:$(cat package.json | jq -r '.version') -t ghcr.io/decaf-ts/couchdb:latest -f ./docker/Dockerfile-couchdb ./docker",
     "docker:publish": "npm run docker:publish-booter && npm run docker:publish-couchdb",
