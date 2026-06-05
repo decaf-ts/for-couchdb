@@ -17,17 +17,33 @@ import { generateViewIndexes } from "../views";
  * @return {string} The generated index name
  * @memberOf module:for-couchdb
  */
-function generateIndexName(
+export function generateIndexName(
   name: string[],
   direction?: OrderDirection,
   compositions?: string[],
   separator = DefaultSeparator
-) {
+): string {
   return [
     ...name.map((n) => (n === CouchDBKeys.TABLE ? "table" : n)),
     ...(compositions || []),
     ...(direction ? [direction] : []),
     CouchDBKeys.INDEX,
+  ].join(separator);
+}
+
+export function generateModelIndexName(
+  tableName: string,
+  fieldKey: string,
+  compositions: string[] = [],
+  direction?: OrderDirection,
+  separator = DefaultSeparator
+): string {
+  return [
+    tableName,
+    fieldKey,
+    ...compositions,
+    ...(direction ? [direction] : []),
+    PersistenceKeys.INDEX,
   ].join(separator);
 }
 
@@ -173,24 +189,22 @@ export function generateIndexes<M extends Model>(
         if (!meta) return;
         // eslint-disable-next-line prefer-const
         let { directions, compositions } = meta as any;
-        const tableName = modelTableName;
         compositions = compositions || [];
         const fieldKeys = [fieldKey, ...(compositions as string[])];
 
         const tableFilter: Record<string, any> = {
           [CouchDBKeys.TABLE]: {
-            [CouchDBOperator.EQUAL]: tableName,
+            [CouchDBOperator.EQUAL]: modelTableName,
           },
         };
 
         function generate(sort?: OrderDirection, suffix?: string) {
-          const name = [
-            tableName,
+          const name = generateModelIndexName(
+            modelTableName,
             fieldKey,
-            ...(compositions as []),
-            ...(suffix ? [suffix] : []),
-            PersistenceKeys.INDEX,
-          ].join(DefaultSeparator);
+            compositions as string[],
+            suffix as OrderDirection | undefined
+          );
 
           const baseFields = [CouchDBKeys.TABLE, ...fieldKeys];
           const fields = sort

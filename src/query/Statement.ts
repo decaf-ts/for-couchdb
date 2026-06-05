@@ -1,6 +1,5 @@
 import {
   Adapter,
-  AdapterFlags,
   Condition,
   ContextOf,
   GroupOperator,
@@ -27,7 +26,7 @@ import {
   CouchDBOperator,
   CouchDBQueryLimit,
 } from "./constants";
-import { DBKeys, DefaultSeparator } from "@decaf-ts/db-decorators";
+import { DBKeys } from "@decaf-ts/db-decorators";
 import { Metadata } from "@decaf-ts/decoration";
 import {
   generateDesignDocName,
@@ -36,6 +35,12 @@ import {
 } from "../views/generator";
 import { CouchDBViewMetadata } from "../views/types";
 import { CouchDBAdapter } from "../adapter";
+import { CouchDBFlags } from "../types";
+import {
+  attachGeneratedUseIndex,
+  warnScanProneMangoOperators,
+} from "./planner";
+import { generateIndexName } from "../indexes/generator";
 
 type CouchDBViewDescriptor = {
   ddoc: string;
@@ -109,7 +114,7 @@ export class CouchDBStatement<
   protected manualAggregation?: CouchDBAggregateInfo;
   protected attributeTypeCache: Map<string, string | undefined> = new Map();
 
-  constructor(adapter: A, overrides?: Partial<AdapterFlags>) {
+  constructor(adapter: A, overrides?: Partial<CouchDBFlags>) {
     super(adapter, overrides);
   }
 
@@ -276,6 +281,20 @@ export class CouchDBStatement<
     if (this.offsetSelector) query.skip = this.offsetSelector;
     this.attachDefaultQueryIndex(query);
 
+    const forceNamedIndexes =
+      (this.overrides as Partial<CouchDBFlags> | undefined)
+        ?.forceNamedIndexes ?? true;
+
+    if (forceNamedIndexes) {
+      attachGeneratedUseIndex(this.fromSelector, query, log, {
+        preserveDefaultQuery: true,
+        requireSortCoverage: false,
+        forceNamedIndexes: true,
+      });
+    }
+
+    warnScanProneMangoOperators(query.selector, log);
+
     return query;
   }
 
@@ -301,14 +320,10 @@ export class CouchDBStatement<
 
     const targetAttr = (sortEntry?.[0] as string) || matchedAttrs[0];
     const direction = (sortEntry?.[1] as OrderDirection | undefined) || undefined;
-    const suffix = direction ? [String(direction).toLowerCase()] : [];
-    const indexName = [
-      tableName,
-      targetAttr,
-      "defaultQuery",
-      ...suffix,
-      CouchDBKeys.INDEX,
-    ].join(DefaultSeparator);
+    const indexName = generateIndexName(
+      [tableName, targetAttr, "defaultQuery"],
+      direction
+    );
     query.use_index = indexName;
   }
 

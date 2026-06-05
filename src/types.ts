@@ -1,3 +1,5 @@
+import { AdapterFlags } from "@decaf-ts/core";
+
 /**
  * @description Response from a CouchDB Mango query
  * @summary Contains the matching documents and additional metadata about the query execution
@@ -216,4 +218,12 @@ export interface ViewResponse<D = any> {
   total_rows?: number;
   offset?: number;
   rows: ViewRow<D>[];
+}
+
+export interface CouchDBFlags extends Partial<AdapterFlags> {
+  /**
+   * When true, non-default Mango queries try to attach a generated named index.
+   * Default-query index selection remains unchanged.
+   */
+  forceNamedIndexes?: boolean;
 }

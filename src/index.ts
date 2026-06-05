@@ -8,7 +8,7 @@ export * from "./errors";
 export * from "./metadata";
 export * from "./decorators";
 export * from "./types";
-export * from "./utils";
+export { reAuth, wrapDocumentScope, testReservedAttributes, generateIndexDoc } from "./utils";
 export * from "./query";
 export * from "./views";
 

@@ -1,6 +1,9 @@
 import { BaseModel, OrderDirection } from "@decaf-ts/core";
 import { Model } from "@decaf-ts/decorator-validation";
-import { generateIndexes } from "../../../src/indexes/generator";
+import {
+  generateIndexes,
+  generateModelIndexName,
+} from "../../../src/indexes/generator";
 import { CouchDBKeys } from "../../../src/constants";
 
 class CompositeIndexModel extends BaseModel {}
@@ -97,5 +100,16 @@ describe("generateIndexes", () => {
     expect(sortedDefaultIndexes.length).toBe(2);
 
     jest.restoreAllMocks();
+  });
+
+  it("generates @index-compatible names", () => {
+    expect(
+      generateModelIndexName(
+        "assets",
+        "owner",
+        ["createdAt"],
+        OrderDirection.ASC
+      )
+    ).toBe("assets_owner_createdAt_asc_index");
   });
 });

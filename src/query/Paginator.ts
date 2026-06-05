@@ -37,6 +37,9 @@ export class CouchDBPaginator<M extends Model> extends Paginator<
   M[],
   MangoQuery
 > {
+  protected _bookmarks: Map<number, string> = new Map();
+  protected _knownLastPage?: number;
+
   /**
    * @description Creates a new CouchDBPaginator instance
    * @summary Initializes a paginator for CouchDB query results
@@ -54,6 +57,10 @@ export class CouchDBPaginator<M extends Model> extends Paginator<
     super(adapter, query, size, clazz);
   }
 
+  private isValidBookmark(value: unknown): value is string {
+    return typeof value === "string" && value.length > 0;
+  }
+
   /**
    * @description Prepares a query for pagination
    * @summary Modifies the raw query to include pagination parameters
@@ -65,6 +72,7 @@ export class CouchDBPaginator<M extends Model> extends Paginator<
     if (query.limit) this.limit = query.limit;
 
     query.limit = this.size;
+    delete query.skip;
 
     return query;
   }
@@ -139,32 +147,32 @@ export class CouchDBPaginator<M extends Model> extends Paginator<
     );
     if (this.isPreparedStatement())
       return await this.pagePrepared(page, ...ctxArgs);
-    const statement = Object.assign({}, this.statement);
+    page = this.validatePage(page ?? 1);
 
-    if (!this._recordCount || !this._totalPages) {
-      this._totalPages = this._recordCount = 0;
-      const countResults =
-      (await this.adapter.raw<M[], true>(
-        { ...statement, limit: Number.MAX_SAFE_INTEGER },
-        true,
-        ...ctxArgs
-      )) || [];
-      this._recordCount = countResults.length;
-      if (this._recordCount > 0) {
-        const size = statement?.limit || this.size;
-        this._totalPages = Math.ceil(this._recordCount / size);
-        return await this.page(page, ...ctxArgs);
+    const statement = Object.assign({}, this.statement);
+    statement.limit = this.size;
+
+    if (page === 1) {
+      if (this.isValidBookmark(bookmark)) {
+        statement.bookmark = bookmark;
+      } else {
+        delete statement.bookmark;
       }
     } else {
-      page = this.validatePage(page);
-      statement.skip = (page - 1) * this.size;
+      const explicitBookmark = bookmark || this._bookmarks.get(page);
+
+      if (!this.isValidBookmark(explicitBookmark)) {
+        throw new PagingError(
+          "Random page access requires a cached CouchDB bookmark. Start at page 1 and page forward, or pass an explicit bookmark."
+        );
+      }
+
+      delete statement.skip;
+      statement.bookmark = explicitBookmark;
     }
 
-    if (page !== 1) {
-      if (!this._bookmark)
-        throw new PagingError("No bookmark. Did you start in the first page?");
-      statement["bookmark"] = this._bookmark as string;
-    }
+    delete statement.skip;
+
     const rawResult: MangoResponse<any> = (await this.adapter.raw(
       statement,
       false,
@@ -173,6 +181,11 @@ export class CouchDBPaginator<M extends Model> extends Paginator<
 
     const { docs, bookmark: nextBookmark, warning } = rawResult;
     if (warning) log.warn(warning);
+    if (rawResult.execution_stats) {
+      log.debug(
+        `Mango execution stats: ${JSON.stringify(rawResult.execution_stats)}`
+      );
+    }
     if (!this.clazz) throw new PagingError("No statement target defined");
     const id = Model.pk(this.clazz);
     const type = Metadata.get(
@@ -191,8 +204,16 @@ export class CouchDBPaginator<M extends Model> extends Paginator<
               ctx
             );
           });
-    this._bookmark = nextBookmark;
+    this._bookmark = this.isValidBookmark(nextBookmark) ? nextBookmark : undefined;
     this._currentPage = page;
+    if (this.isValidBookmark(nextBookmark)) {
+      this._bookmarks.set(page + 1, nextBookmark);
+    }
+    if (!this.isValidBookmark(nextBookmark) || docs.length < this.size) {
+      this._knownLastPage = page;
+      this._totalPages = page;
+      this._recordCount = (page - 1) * this.size + docs.length;
+    }
     return pageResults;
   }
 }

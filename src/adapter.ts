@@ -19,7 +19,7 @@ import {
 } from "@decaf-ts/db-decorators";
 import { Model } from "@decaf-ts/decorator-validation";
 import { IndexError } from "./errors";
-import { type MangoQuery, ViewResponse } from "./types";
+import { type CouchDBFlags, type MangoQuery, ViewResponse } from "./types";
 import { CouchDBPaginator, CouchDBStatement } from "./query";
 import { Context } from "@decaf-ts/core";
 import { type Constructor } from "@decaf-ts/decoration";
@@ -90,11 +90,14 @@ export abstract class CouchDBAdapter<
    * @template M - The model type
    * @return {CouchDBStatement<M, any>} A new CouchDBStatement instance
    */
+  Statement<M extends Model>(
+    overrides?: Partial<CouchDBFlags>
+  ): CouchDBStatement<M, Adapter<CONF, CONN, MangoQuery, C>, any>;
   @final()
   Statement<M extends Model>(
     overrides?: Partial<AdapterFlags>
   ): CouchDBStatement<M, Adapter<CONF, CONN, MangoQuery, C>, any> {
-    return new CouchDBStatement(this, overrides);
+    return new CouchDBStatement(this, overrides as Partial<CouchDBFlags>);
   }
 
   override Paginator<M extends Model>(
