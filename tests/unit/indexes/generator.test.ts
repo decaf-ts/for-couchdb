@@ -1,5 +1,6 @@
-import { BaseModel, OrderDirection } from "@decaf-ts/core";
-import { Model } from "@decaf-ts/decorator-validation";
+import { BaseModel, index, OrderDirection, pk } from "@decaf-ts/core";
+import { Model, model, ModelArg } from "@decaf-ts/decorator-validation";
+import { uses } from "@decaf-ts/decoration";
 import {
   generateIndexes,
   generateModelIndexName,
@@ -111,5 +112,44 @@ describe("generateIndexes", () => {
         OrderDirection.ASC
       )
     ).toBe("assets_owner_createdAt_asc_index");
+  });
+
+  it("generates both plain and composite indexes from real @index metadata on the same property", () => {
+    @uses("ram")
+    @model()
+    class RealCompositeIndexModel extends Model {
+      @pk()
+      id!: string;
+
+      @index([OrderDirection.ASC, OrderDirection.DSC])
+      @index([OrderDirection.ASC, OrderDirection.DSC], ["id"])
+      status!: string;
+
+      constructor(arg?: ModelArg<RealCompositeIndexModel>) {
+        super(arg);
+      }
+    }
+
+    const tableName = Model.tableName(RealCompositeIndexModel);
+    const indexes = generateIndexes([RealCompositeIndexModel]);
+    const names = indexes.map((idx) => idx.name);
+
+    expect(names).toEqual(
+      expect.arrayContaining([
+        `${tableName}_status_asc_index`,
+        `${tableName}_status_desc_index`,
+        `${tableName}_status_id_asc_index`,
+        `${tableName}_status_id_desc_index`,
+      ])
+    );
+
+    const compositeAsc = indexes.find(
+      (idx) => idx.name === `${tableName}_status_id_asc_index`
+    );
+    expect(compositeAsc?.index.fields).toEqual([
+      { [CouchDBKeys.TABLE]: OrderDirection.ASC },
+      { status: OrderDirection.ASC },
+      { id: OrderDirection.ASC },
+    ]);
   });
 });

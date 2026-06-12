@@ -62,6 +62,18 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
+function selectorContainsOperator(node: any, operator: string): boolean {
+  if (!node || typeof node !== "object") return false;
+
+  if (Array.isArray(node)) {
+    return node.some((child) => selectorContainsOperator(child, operator));
+  }
+
+  return Object.entries(node).some(
+    ([key, value]) => key === operator || selectorContainsOperator(value, operator)
+  );
+}
+
 export function normalizeSortField(
   entry: SortOrder
 ): { field: string; direction?: OrderDirection } | undefined {
@@ -298,6 +310,18 @@ export function resolveGeneratedIndexForQuery(
   } = {}
 ): MangoIndexResolution | undefined {
   if (query.use_index) return undefined;
+
+  // A single named index cannot be proven valid for selectors combining
+  // branches via $or/$nor, since CouchDB only treats an index as usable when
+  // its leading fields constrain every branch of the selector. Forcing a
+  // use_index hint here causes CouchDB to reject it as "not a valid index for
+  // this query" - so let CouchDB pick (or fall back) on its own instead.
+  if (
+    selectorContainsOperator(query.selector, CouchDBGroupOperator.OR) ||
+    selectorContainsOperator(query.selector, "$nor")
+  ) {
+    return undefined;
+  }
 
   const preserveDefaultQuery = options.preserveDefaultQuery !== false;
   const candidates = collectGeneratedIndexEntries(clazz);
