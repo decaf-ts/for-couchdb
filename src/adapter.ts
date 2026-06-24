@@ -262,9 +262,13 @@ export abstract class CouchDBAdapter<
     const { ctxArgs } = this.logCtx(args, this.createPrefix);
     const tableName = Model.tableName(clazz);
     const record: Record<string, any> = {};
+    Object.assign(record, model);
+    // Set the discriminator fields AFTER Object.assign so model data cannot
+    // overwrite the table membership or document id. isReserved() blocks
+    // mapping these via @column, but this guards against any other path that
+    // might surface these keys on the prepared record.
     record[CouchDBKeys.TABLE] = tableName;
     record[CouchDBKeys.ID] = this.generateId(tableName, id as any);
-    Object.assign(record, model);
     return [clazz, id, record, ...ctxArgs];
   }
 
@@ -306,9 +310,10 @@ export abstract class CouchDBAdapter<
     const { ctxArgs } = this.logCtx(args, this.createAllPrefix);
     const records = ids.map((id, count) => {
       const record: Record<string, any> = {};
+      Object.assign(record, models[count]);
+      // Discriminator fields set AFTER Object.assign (see createPrefix).
       record[CouchDBKeys.TABLE] = tableName;
       record[CouchDBKeys.ID] = this.generateId(tableName, id);
-      Object.assign(record, models[count]);
       return record;
     });
     return [clazz, ids, records, ...ctxArgs];
@@ -348,14 +353,15 @@ export abstract class CouchDBAdapter<
     const tableName = Model.tableName(clazz);
     const { ctxArgs } = this.logCtx(args, this.updatePrefix);
     const record: Record<string, any> = {};
-    record[CouchDBKeys.TABLE] = tableName;
-    record[CouchDBKeys.ID] = this.generateId(tableName, id);
     const rev = model[PersistenceKeys.METADATA];
     if (!rev)
       throw new InternalError(
         `No revision number found for record with id ${id}`
       );
     Object.assign(record, model);
+    // Discriminator fields set AFTER Object.assign (see createPrefix).
+    record[CouchDBKeys.TABLE] = tableName;
+    record[CouchDBKeys.ID] = this.generateId(tableName, id);
     record[CouchDBKeys.REV] = rev;
     return [clazz, id, record, ...ctxArgs];
   }
@@ -398,14 +404,15 @@ export abstract class CouchDBAdapter<
     const { ctxArgs } = this.logCtx(args, this.updateAllPrefix);
     const records = ids.map((id, count) => {
       const record: Record<string, any> = {};
-      record[CouchDBKeys.TABLE] = tableName;
-      record[CouchDBKeys.ID] = this.generateId(tableName, id);
       const rev = models[count][PersistenceKeys.METADATA];
       if (!rev)
         throw new InternalError(
           `No revision number found for record with id ${id}`
         );
       Object.assign(record, models[count]);
+      // Discriminator fields set AFTER Object.assign (see createPrefix).
+      record[CouchDBKeys.TABLE] = tableName;
+      record[CouchDBKeys.ID] = this.generateId(tableName, id);
       record[CouchDBKeys.REV] = rev;
       return record;
     });
@@ -466,7 +473,12 @@ export abstract class CouchDBAdapter<
    * @return {boolean} True if the attribute is reserved, false otherwise
    */
   protected override isReserved(attr: string): boolean {
-    return !!attr.match(reservedAttributes);
+    if (attr.match(reservedAttributes)) return true;
+    // Block the internal discriminator markers this adapter uses to route
+    // documents to tables. Allowing a model property to map to these (e.g.
+    // via @column("??table")) would let a crafted record forge its table
+    // membership and leak into another table's query results.
+    return attr === CouchDBKeys.TABLE || attr === CouchDBKeys.SEQUENCE;
   }
 
   /**

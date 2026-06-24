@@ -174,6 +174,15 @@ export class CouchDBStatement<
    *
    *   Statement-->>Statement: Return query
    */
+  protected toColumnName(attribute: string): string {
+    if (
+      attribute === CouchDBKeys.TABLE ||
+      attribute === CouchDBKeys.SEQUENCE
+    )
+      return attribute;
+    return Model.columnName(this.fromSelector, attribute as keyof M);
+  }
+
   protected build(): MangoQuery {
     const log = this.log.for(this.build);
     this.manualAggregation = undefined;
@@ -189,7 +198,10 @@ export class CouchDBStatement<
     selectors[CouchDBKeys.TABLE] = {};
     selectors[CouchDBKeys.TABLE] = Model.tableName(this.fromSelector);
     const query: MangoQuery = { selector: selectors };
-    if (this.selectSelector) query.fields = this.selectSelector as string[];
+    if (this.selectSelector)
+      query.fields = (this.selectSelector as string[]).map((f) =>
+        this.toColumnName(f)
+      );
 
     if (this.whereCondition) {
       const condition: MangoSelector = this.parseCondition(
@@ -256,7 +268,7 @@ export class CouchDBStatement<
       query.sort = query.sort || [];
       query.selector = query.selector || ({} as MangoSelector);
       for (const [selectorKey, direction] of this.orderBySelectors) {
-        const selector = selectorKey as string;
+        const selector = this.toColumnName(selectorKey as string);
         const rec: Record<string, OrderDirection> = {};
         rec[selector] = direction as OrderDirection;
         (query.sort as Record<string, OrderDirection>[]).push(rec);
@@ -405,9 +417,17 @@ export class CouchDBStatement<
     if ((rawInput as any)?.aggregate && aggregator) {
       return this.executeAggregate<R>(aggregator, ctx);
     }
-    const results: any[] = await this.adapter.raw(rawInput, true, ctx);
-    const processed = results.map((r) => this.processRecord(r, ctx));
+    // Scope the raw query to this statement's own table. build() does this for
+    // the execute() path; raw() must do the same so a caller cannot use it to
+    // dump or target documents belonging to other tables (cross-table leak).
+    const scoped = this.scopeToTable(rawInput);
+    const results: any[] = await this.adapter.raw(scoped, true, ctx);
+
+    // Manual aggregation needs reverted docs to compute the aggregate. The
+    // result is a computed value (not documents), so execute() returns it
+    // unchanged via hasAggregation().
     if (this.manualAggregation) {
+      const processed = results.map((r) => this.processRecord(r, ctx));
       const manualResult = this.executeManualAggregation<R>(
         processed,
         this.manualAggregation,
@@ -417,14 +437,53 @@ export class CouchDBStatement<
       return manualResult;
     }
 
+    // groupBy (without selectSelector) needs reverted docs to build groups.
+    // hasAggregation() is true for groupBy, so execute() returns this unchanged.
     if (!this.selectSelector && this.groupBySelectors?.length) {
+      const processed = results.map((r) => this.processRecord(r, ctx));
       return this.groupSelectResults(processed) as R;
     }
 
     if (!this.selectSelector) {
-      return (await this.applyAfterHandlersToResult(processed, ctx)) as R;
+      // Return raw docs and let execute() perform the single revert. The
+      // previous implementation reverted here AND in execute(), causing a
+      // double-revert that clobbered column-mapped fields (the second revert
+      // looked up column names on already-reverted model instances).
+      return results as R;
     }
-    return results as R;
+
+    // selectSelector is set: process here (core Statement.raw() contract) and
+    // return model instances. execute() returns these unchanged.
+    const processor = (r: any) => this.processRecord(r, ctx);
+    if (Array.isArray(results)) {
+      const mapped = results.map(processor) as unknown as R;
+      return (await this.applyAfterHandlersToResult(mapped, ctx)) as R;
+    }
+    const single = processor(results) as unknown as R;
+    return (await this.applyAfterHandlersToResult(single, ctx)) as R;
+  }
+
+  /**
+   * @description Forces a raw Mango query to be scoped to this statement's table
+   * @summary Returns a copy of the input query whose selector includes the
+   * ??table discriminator set to the statement's own table, so a caller cannot
+   * read documents from other tables through raw(). Existing ??table selectors
+   * are overridden (never trusted from the caller).
+   * @param {MangoQuery} rawInput - The raw Mango query to scope
+   * @return {MangoQuery} A new Mango query scoped to this statement's table
+   */
+  protected scopeToTable(rawInput: MangoQuery): MangoQuery {
+    if (!this.fromSelector) return rawInput;
+    const tableName = Model.tableName(this.fromSelector);
+    const base =
+      rawInput && typeof rawInput === "object" ? rawInput : ({} as MangoQuery);
+    const selector = Object.assign(
+      {},
+      (base.selector as Record<string, any>) || {}
+    );
+    // Force the discriminator; a caller-supplied value is never trusted.
+    selector[CouchDBKeys.TABLE] = tableName;
+    return Object.assign({}, base, { selector });
   }
 
   /**
@@ -967,7 +1026,7 @@ export class CouchDBStatement<
       const range = prefixRange(comparison);
       return {
         selector: {
-          [attr1]: {
+          [this.toColumnName(attr1)]: {
             [CouchDBOperator.BIGGER_EQ]: range.start,
             [CouchDBOperator.SMALLER]: range.end,
           },
@@ -982,7 +1041,7 @@ export class CouchDBStatement<
         throw new QueryError("ENDS_WITH requires a string comparison");
       return {
         selector: {
-          [attr1]: {
+          [this.toColumnName(attr1)]: {
             [CouchDBOperator.REGEXP]: `${escapeRegExp(comparison)}$`,
           },
         },
@@ -990,7 +1049,7 @@ export class CouchDBStatement<
     }
 
     if (operator === Operator.BETWEEN) {
-      const attr = attr1 as string;
+      const attr = this.toColumnName(attr1 as string);
       if (!Array.isArray(comparison) || comparison.length !== 2)
         throw new QueryError("BETWEEN operator requires [min, max] comparison");
       const [min, max] = comparison;
@@ -1011,14 +1070,14 @@ export class CouchDBStatement<
         operator as GroupOperator
       ) === -1
     ) {
-      op[attr1 as string] = {} as MangoSelector;
-      (op[attr1 as string] as MangoSelector)[translateOperators(operator)] =
-        comparison;
+      const attr = this.toColumnName(attr1 as string);
+      op[attr] = {} as MangoSelector;
+      (op[attr] as MangoSelector)[translateOperators(operator)] = comparison;
     } else if (operator === Operator.NOT) {
       op = this.parseCondition(attr1 as Condition<M>).selector as MangoSelector;
       op[translateOperators(Operator.NOT)] = {} as MangoSelector;
       (op[translateOperators(Operator.NOT)] as MangoSelector)[
-        (attr1 as unknown as { attr1: string }).attr1
+        this.toColumnName((attr1 as unknown as { attr1: string }).attr1)
       ] = comparison;
     } else {
       const op1: any = this.parseCondition(attr1 as Condition<M>).selector;
