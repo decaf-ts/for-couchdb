@@ -1,6 +1,6 @@
 import { OrderDirection, PersistenceKeys } from "@decaf-ts/core";
 import { CouchDBKeys } from "./constants";
-import { DefaultSeparator } from "@decaf-ts/db-decorators";
+import { DefaultSeparator, InternalError } from "@decaf-ts/db-decorators";
 import { CouchDBOperator } from "./query/constants";
 import { CreateIndexRequest, MangoSelector, SortOrder } from "./types";
 
@@ -14,8 +14,12 @@ import { CreateIndexRequest, MangoSelector, SortOrder } from "./types";
  * @function reAuth
  * @memberOf module:for-couchdb
  */
-export async function reAuth(con: any, user: string, pass: string) {
-  return con.auth(user, pass);
+export async function reAuth(
+  con: any,
+  couchUser: string,
+  couchPassword: string
+) {
+  return con.auth(couchUser, couchPassword);
 }
 
 /**
@@ -57,17 +61,29 @@ export async function reAuth(con: any, user: string, pass: string) {
 export function wrapDocumentScope(
   con: any,
   dbName: string,
-  user: string,
-  pass: string
+  couchUser: string,
+  couchPassword: string
 ): any {
   const db = con.use ? con.use(dbName) : con;
-  ["insert", "get", "put", "destroy", "find", "view"].forEach((k) => {
+  [
+    "insert",
+    "bulk",
+    "fetch",
+    "createIndex",
+    "get",
+    "put",
+    "destroy",
+    "find",
+    "view",
+  ].forEach((k) => {
     const original = (db as Record<string, any>)[k];
+    if (typeof original !== "function")
+      throw new InternalError(`Could not find function to bind ${k}`);
     Object.defineProperty(db, k, {
       enumerable: false,
       configurable: true,
       value: async (...args: any[]) => {
-        await reAuth(con, user, pass);
+        await reAuth(con, couchUser, couchPassword);
         return original.call(db, ...args);
       },
     });
