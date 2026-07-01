@@ -1,6 +1,6 @@
 import { OrderDirection, PersistenceKeys } from "@decaf-ts/core";
 import { CouchDBKeys } from "./constants";
-import { DefaultSeparator, InternalError } from "@decaf-ts/db-decorators";
+import { DefaultSeparator } from "@decaf-ts/db-decorators";
 import { CouchDBOperator } from "./query/constants";
 import { CreateIndexRequest, MangoSelector, SortOrder } from "./types";
 
@@ -77,8 +77,12 @@ export function wrapDocumentScope(
     "view",
   ].forEach((k) => {
     const original = (db as Record<string, any>)[k];
-    if (typeof original !== "function")
-      throw new InternalError(`Could not find function to bind ${k}`);
+    // Not every CouchDB client exposes the same surface (e.g. nano has no
+    // `put`, it uses `insert` for both create and update). Skip methods that
+    // are not available on the underlying scope instead of failing hard, so
+    // the wrapper stays usable across adapters while still re-authing every
+    // method that does exist.
+    if (typeof original !== "function") return;
     Object.defineProperty(db, k, {
       enumerable: false,
       configurable: true,
