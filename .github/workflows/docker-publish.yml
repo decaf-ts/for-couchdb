@@ -1,0 +1,63 @@
+name: "Docker Publish"
+
+# Thin caller of decaf-ts/reusable-actions/.github/workflows/docker-publish.yml.
+# Builds and publishes this repo's docker image(s) to ghcr.io, running in
+# parallel with publish-on-release (npm) on every GitHub Release. Also
+# triggerable on demand from the Actions UI with the inputs below.
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      version-tag:
+        description: "Explicit version for the versioned tag. Empty = read from package.json."
+        required: false
+        default: ""
+      push:
+        description: "Push the built image to the registry (false = build only)."
+        type: boolean
+        required: false
+        default: true
+      platforms:
+        description: "Platforms to build (buildx format, e.g. linux/amd64,linux/arm64)."
+        required: false
+        default: "linux/amd64"
+      no-cache:
+        description: "Build with --no-cache."
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  docker-couchdb:
+    name: Docker couchdb
+    uses: decaf-ts/reusable-actions/.github/workflows/docker-publish.yml@master
+    with:
+      image: decaf-ts/couchdb
+      dockerfile: docker/Dockerfile-couchdb
+      context: ./docker
+      tag-prefix: ""
+      floating-tag: latest
+      version-tag: ${{ inputs.version-tag }}
+      push: ${{ inputs.push != false }}
+      platforms: ${{ inputs.platforms || 'linux/amd64' }}
+      no-cache: ${{ inputs.no-cache == true }}
+      mount-npm-token: false
+    secrets: inherit
+  docker-couchdb-booter:
+    name: Docker couchdb booter
+    uses: decaf-ts/reusable-actions/.github/workflows/docker-publish.yml@master
+    with:
+      image: decaf-ts/couchdb-booter
+      dockerfile: docker/Dockerfile-booter
+      context: ./docker
+      tag-prefix: ""
+      floating-tag: latest
+      version-tag: ${{ inputs.version-tag }}
+      push: ${{ inputs.push != false }}
+      platforms: ${{ inputs.platforms || 'linux/amd64' }}
+      no-cache: ${{ inputs.no-cache == true }}
+      mount-npm-token: false
+    secrets: inherit
