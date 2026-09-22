@@ -20,6 +20,7 @@ export const CouchDBQueryLimit = 250;
  * @property {string} SMALLER_EQ - Less than or equal operator ($lte)
  * @property {string} NOT - Negation operator ($not)
  * @property {string} IN - In array operator ($in)
+ * @property {string} EXISTS - Attribute existence operator ($exists)
  * @property {string} REGEXP - Regular expression operator ($regex)
  * @const CouchDBOperator
  * @type {CouchDBOperatorType}
@@ -36,6 +37,7 @@ export const CouchDBOperator: Record<string, MangoOperator> = {
   NOT: "$not",
   IN: "$in",
   // IS = "IS",
+  EXISTS: "$exists",
   REGEXP: "$regex",
 };
 
