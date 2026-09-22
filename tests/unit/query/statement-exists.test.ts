@@ -45,4 +45,44 @@ describe("CouchDBStatement EXISTS translation", () => {
 
     expect(query.selector.nickname).toHaveProperty("$exists", true);
   });
+
+  it("maps a negated field-level EXISTS condition to a $exists:false selector", () => {
+    const statement = new CouchDBStatement({} as any);
+    (statement as any).fromSelector = GtinExistsModel;
+
+    const query = (statement as any).parseCondition(
+      Condition.attribute<GtinExistsModel>("nickname").exists(false)
+    );
+
+    expect(query.selector).toEqual({ nickname: { $exists: false } });
+  });
+
+  it("maps a negated EXISTS to $exists:false for a primary key attribute too", () => {
+    const statement = new CouchDBStatement({} as any);
+    (statement as any).fromSelector = GtinExistsModel;
+
+    const query = (statement as any).parseCondition(
+      Condition.attribute<GtinExistsModel>("productCode").exists(false)
+    );
+
+    expect(query.selector).toEqual({ productCode: { $exists: false } });
+  });
+
+  it("combines a negated EXISTS leg with a positive EXISTS leg", () => {
+    const statement = new CouchDBStatement({} as any);
+    (statement as any).fromSelector = GtinExistsModel;
+
+    const query = (statement as any).parseCondition(
+      Condition.attribute<GtinExistsModel>("nickname")
+        .exists(false)
+        .and(Condition.attribute<GtinExistsModel>("productCode").exists())
+    );
+
+    expect(query.selector).toEqual({
+      $and: [
+        { nickname: { $exists: false } },
+        { productCode: { $exists: true } },
+      ],
+    });
+  });
 });
