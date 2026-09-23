@@ -85,4 +85,32 @@ describe("CouchDBStatement EXISTS translation", () => {
       ],
     });
   });
+
+  it("squashes a single negated EXISTS condition to the existsNotOf prepared statement", async () => {
+    const statement = new CouchDBStatement({} as any);
+    (statement as any).fromSelector = GtinExistsModel;
+    statement.where(
+      Condition.attribute<GtinExistsModel>("nickname").exists(false)
+    );
+
+    await statement.prepare({ get: () => undefined } as any);
+
+    expect((statement as any).prepared).toMatchObject({
+      method: "existsNotOf",
+      args: ["nickname"],
+    });
+  });
+
+  it("still squashes a single positive EXISTS condition to the existsOf prepared statement", async () => {
+    const statement = new CouchDBStatement({} as any);
+    (statement as any).fromSelector = GtinExistsModel;
+    statement.where(Condition.attribute<GtinExistsModel>("nickname").exists());
+
+    await statement.prepare({ get: () => undefined } as any);
+
+    expect((statement as any).prepared).toMatchObject({
+      method: "existsOf",
+      args: ["nickname"],
+    });
+  });
 });
