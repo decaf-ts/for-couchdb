@@ -1,3 +1,4 @@
+import { it } from "@decaf-ts/for-testing";
 import { BaseModel, Condition, Operator, pk, table } from "@decaf-ts/core";
 import { model } from "@decaf-ts/decorator-validation";
 import { CouchDBStatement } from "../../../src/query/Statement";

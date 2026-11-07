@@ -542,7 +542,7 @@ export abstract class CouchDBAdapter<
     reason?: string
   ): E {
     if (err instanceof BaseError) return err as any;
-    let code: string = "";
+    let code: string;
     if (typeof err === "string") {
       code = err;
       if (code.match(/already exist|update conflict/g))

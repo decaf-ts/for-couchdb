@@ -110,7 +110,7 @@ export function generateIndexes<M extends Model>(
 
   models.forEach((m) => {
     const modelTableName = Model.tableName(m);
-    let defaultQueryAttrs: string[] = [];
+    let defaultQueryAttrs: string[];
     try {
       defaultQueryAttrs = Model.defaultQueryAttributes(m);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars

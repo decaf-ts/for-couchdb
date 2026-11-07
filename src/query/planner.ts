@@ -201,7 +201,7 @@ function collectGeneratedIndexEntries(clazz: Constructor): MangoIndexCandidate[]
     source: "table",
   });
 
-  let defaultQueryAttrs: string[] = [];
+  let defaultQueryAttrs: string[];
   try {
     defaultQueryAttrs = Model.defaultQueryAttributes(clazz) as string[];
   } catch {

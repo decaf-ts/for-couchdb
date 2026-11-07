@@ -293,7 +293,7 @@ export class CouchDBStatement<
   protected attachDefaultQueryIndex(query: MangoQuery): void {
     if (!this.fromSelector || query.use_index) return;
     const tableName = Model.tableName(this.fromSelector);
-    let defaultAttrs: string[] = [];
+    let defaultAttrs: string[];
     try {
       defaultAttrs = Model.defaultQueryAttributes(this.fromSelector) as string[];
     } catch {
